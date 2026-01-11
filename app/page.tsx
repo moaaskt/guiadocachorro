@@ -6,6 +6,7 @@ import { FAQ } from "@/components/FAQ";
 import { LatestPosts } from "@/components/LatestPosts";
 import { EditorialHighlights } from "@/components/EditorialHighlights";
 import { AuthoritySection } from "@/components/AuthoritySection";
+import { FinalCTA } from "@/components/FinalCTA";
 
 
 
@@ -21,6 +22,7 @@ export default function Home() {
       <PopularBreeds />
       <CareGuides />
       <LatestPosts />
+      <FinalCTA />
     </>
   );
 }
