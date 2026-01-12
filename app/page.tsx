@@ -1,14 +1,26 @@
 import { Header } from "@/components/Header";
+import { Hero } from "@/components/Hero";
+import { PopularBreeds } from "@/components/PopularBreeds";
+import { CareGuides } from "@/components/CareGuides"; 
+import { FAQ } from "@/components/FAQ";
+import { LatestPosts } from "@/components/LatestPosts";
+import { EditorialHighlights } from "@/components/EditorialHighlights";
+import { AuthoritySection } from "@/components/AuthoritySection";
+
+
+
 
 export default function Home() {
   return (
     <>
       <Header />
-      <main className="p-10">
-        <h2 className="text-2xl font-bold">
-          Bem-vindo ao Guia do Cachorro 🐶
-        </h2>
-      </main>
+      <Hero />
+      <AuthoritySection />
+      <EditorialHighlights />
+      <FAQ />
+      <PopularBreeds />
+      <CareGuides />
+      <LatestPosts />
     </>
   );
 }
