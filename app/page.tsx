@@ -7,7 +7,7 @@ import { LatestPosts } from "@/components/LatestPosts";
 import { EditorialHighlights } from "@/components/EditorialHighlights";
 import { AuthoritySection } from "@/components/AuthoritySection";
 import { FinalCTA } from "@/components/FinalCTA";
-
+import { Footer } from "@/components/Footer";
 
 
 
@@ -23,6 +23,7 @@ export default function Home() {
       <CareGuides />
       <LatestPosts />
       <FinalCTA />
+      <Footer />
     </>
   );
 }
