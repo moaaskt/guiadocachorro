@@ -26,7 +26,7 @@ export function FinalCTA() {
             href="/guias"
             className="inline-flex items-center justify-center px-8 py-4 rounded-xl bg-white text-blue-600 font-semibold hover:bg-blue-50 transition"
           >
-            Ver Guias de Cuidados
+            Ver Guias de Cuidados.
           </a>
 
           <a
