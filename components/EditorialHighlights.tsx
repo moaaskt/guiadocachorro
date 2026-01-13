@@ -8,7 +8,7 @@ const editorials = [
     tag: 'Raças Populares',
     title: 'Golden Retriever: O companheiro perfeito?',
     description:
-      'Descubra por que esta é uma das raças mais amadas do mundo e se ela combina com o seu estilo de vida.',
+      'Descubra por que esta é uma das raças mais amadas do Mundo e se ela combina com o seu estilo de vida.',
     image:
       'https://images.unsplash.com/photo-1558788353-f76d92427f16',
   },
