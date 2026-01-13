@@ -18,7 +18,7 @@ const editorials = [
     description:
       'Um guia completo e imparcial sobre os prós e contras das principais dietas caninas.',
     image:
-      'https://images.unsplash.com/photo-1583511655936-526c0c1f5b8a',
+      'https://images.dog.ceo/breeds/retriever-golden/n02099601_3004.jpg',
   },
 ];
 
