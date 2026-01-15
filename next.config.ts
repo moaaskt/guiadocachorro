@@ -6,6 +6,11 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "images.unsplash.com",
+        
+      },
+      {
+        protocol: "https",
+        hostname: "drive.google.com",
       },
       {
         protocol: "https",
@@ -14,6 +19,10 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "images.unsplash.com'",
+      },
+      {
+        protocol: "https",
+        hostname: "ppvkpgrjsrftzdqkbgmi.supabase.co",
       },
     ],
   },
