@@ -1,39 +1,26 @@
-import { supabase } from "@/lib/supabase";
-import { notFound } from "next/navigation";
+import { notFound } from "next/navigation"
+import { getPageBySlug } from "@/lib/data/pages"  
 
-interface PageProps {
-  params: { slug: string };
+type PageProps = {
+  params: Promise<{ slug: string }>
 }
 
-export default async function Page({ params }: PageProps) {
-  const { data, error } = await supabase
-    .from("pages")
-    .select("*")
-    .eq("slug", params.slug)
-    .single();
+export default async function DynamicPage({ params }: PageProps) {
+  const { slug } = await params
 
-  if (error || !data) {
-    notFound();
+  const page = await getPageBySlug(slug)
+
+  if (!page || page.status !== "published") {
+    notFound()
   }
 
   return (
-    <main className="min-h-screen">
-      <section className="max-w-6xl mx-auto px-6 py-16">
-        <h1 className="text-4xl font-bold mb-6">{data.title}</h1>
+    <main className="prose mx-auto py-10">
+      <h1>{page.title}</h1>
 
-        {data.image && (
-          <img
-            src={data.image}
-            alt={data.title}
-            className="w-full h-auto rounded-xl mb-8"
-          />
-        )}
-
-        <div
-          className="prose prose-invert max-w-none"
-          dangerouslySetInnerHTML={{ __html: data.content }}
-        />
-      </section>
+      <div
+        dangerouslySetInnerHTML={{ __html: page.content }}
+      />
     </main>
-  );
+  )
 }

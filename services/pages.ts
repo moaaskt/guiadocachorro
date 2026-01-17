@@ -16,6 +16,7 @@ export async function getPageBySlug(slug: string): Promise<Page | null> {
     .from("pages")
     .select("*")
     .eq("slug", slug)
+    .eq("status", "published")
     .single();
 
   if (error) {
