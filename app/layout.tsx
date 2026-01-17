@@ -1,13 +1,22 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google"; // Usando Inter padrão (ou Geist se preferir)
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { Header } from "@/components/Header"; // 👈 IMPORTANTE: Importando o componente
+import { Header } from "@/components/layout/Header"; 
+import { Footer } from "@/components/layout/Footer";
 
-const inter = Inter({ subsets: ["latin"] });
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
 
 export const metadata: Metadata = {
-  title: "Guia do Cachorro",
-  description: "Tudo o que você precisa saber para cuidar bem do seu cachorro",
+  title: "Guia do Cão | Tudo sobre seu melhor amigo",
+  description: "Guia completo de raças, saúde e cuidados para cachorros.",
 };
 
 export default function RootLayout({
@@ -16,13 +25,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR">
-      <body className={`${inter.className} min-h-screen bg-white text-gray-900 antialiased`}>
+    <html lang="pt-BR" className="scroll-smooth">
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased text-gray-900 bg-white`}>
         
-       
         <Header />
 
         {children}
+
+        <Footer />
+        
       </body>
     </html>
   );
