@@ -1,9 +1,50 @@
 # 📋 Documentação Técnica - Guia do Cachorro
 
-**Versão:** 1.0  
-**Data:** Análise Técnica Completa  
+**Versão:** 2.0 (Atualizada)  
+**Data:** Análise Técnica Completa - Atualização Pós-Refatoração  
 **Framework:** Next.js 16.1.1 (App Router)  
 **Stack:** TypeScript, Supabase, TailwindCSS, React 19
+
+---
+
+## 🔄 Mudanças Recentes (Versão 2.0)
+
+### ✅ Refatoração Completa do Service Layer
+
+**Data:** Atualização pós-refatoração
+
+**Principais Alterações:**
+
+1. **Nova Organização de Arquivos:**
+   - ✅ Criado `lib/data/pages.ts` - Função `getPageBySlug` refatorada
+   - ✅ Criado `lib/types/pages.ts` - Tipo `Page` unificado
+   - ⚠️ `services/pages.ts` ainda existe mas está obsoleto (deve ser removido)
+
+2. **Tipo `Page` Unificado:**
+   - **Antes:** Dois tipos diferentes com campos incompatíveis
+   - **Agora:** Tipo único em `lib/types/pages.ts` com:
+     - `content: string` (HTML) substituindo `description`, `subtitle`, etc.
+     - `status: "draft" | "published"` obrigatório
+     - Campos não-nullable (`slug`, `title`)
+
+3. **Verificação de Status:**
+   - **Antes:** Filtro na query SQL
+   - **Agora:** Verificação no componente (`app/[slug]/page.tsx`)
+   - **Benefício:** Permite flexibilidade futura para preview de drafts
+
+4. **Renderização de Conteúdo:**
+   - **Antes:** Campos separados (`title`, `subtitle`, `description`, `image_url`)
+   - **Agora:** `dangerouslySetInnerHTML` com `page.content` (HTML rico)
+   - **Layout:** Classe `prose` do Tailwind para estilização tipográfica
+
+5. **Atualização do Next.js 16:**
+   - `params` agora é `Promise<{ slug: string }>` (não mais objeto direto)
+   - Necessário usar `await params` antes de acessar propriedades
+
+### ⚠️ Pendências
+
+- `app/not-found.tsx` ainda usa `@/services/pages` (deve ser atualizado)
+- Arquivo `services/pages.ts` ainda existe (deve ser removido)
 
 ---
 
@@ -48,7 +89,7 @@ O projeto **Guia do Cachorro** é uma aplicação Next.js moderna que utiliza o 
 │       └──────┬──────┘                   │
 │              │                          │
 │       ┌──────▼──────┐                   │
-│       │  Services   │                   │
+│       │  lib/data/  │                   │
 │       │  pages.ts   │                   │
 │       └──────┬──────┘                   │
 │              │                          │
@@ -95,10 +136,13 @@ guia-do-cachorro/
 │
 ├── lib/                        # Utilitários e configurações
 │   ├── supabase.ts            # Cliente Supabase (singleton)
-│   └── pages.ts               # ⚠️ FUNÇÃO getPageBySlug DUPLICADA (não utilizada)
+│   ├── data/                  # Camada de acesso a dados
+│   │   └── pages.ts           # ✅ getPageBySlug (em uso)
+│   └── types/                 # Tipos TypeScript
+│       └── pages.ts           # ✅ Tipo Page unificado
 │
-├── services/                   # Camada de serviços/API
-│   └── pages.ts               # ✅ FUNÇÃO getPageBySlug em uso (usada em [slug]/page.tsx)
+├── services/                   # ⚠️ Legacy - não utilizado
+│   └── pages.ts               # ❌ Versão antiga (obsoleta)
 │
 ├── public/                     # Arquivos estáticos
 ├── next.config.ts             # Configuração do Next.js
@@ -200,54 +244,25 @@ Usuário acessa /sobre
 ```
 
 **Código Completo:**
-```11:58:app/[slug]/page.tsx
+```8:25:app/[slug]/page.tsx
 export default async function DynamicPage({ params }: PageProps) {
-  const page = await getPageBySlug(params.slug);
+  const { slug } = await params
 
-  if (!page) {
-    notFound();
+  const page = await getPageBySlug(slug)
+
+  if (!page || page.status !== "published") {
+    notFound()
   }
 
   return (
-    <main className="container mx-auto px-6 py-16">
-      {page.image_url && (
-        <div className="relative w-full h-[420px] mb-10 rounded-2xl overflow-hidden">
-          <Image
-            src={page.image_url}
-            alt={page.title ?? "Imagem da página"}
-            fill
-            className="object-cover"
-            priority
-          />
-        </div>
-      )}
+    <main className="prose mx-auto py-10">
+      <h1>{page.title}</h1>
 
-      <h1 className="text-4xl font-bold mb-4">
-        {page.title}
-      </h1>
-
-      {page.subtitle && (
-        <p className="text-lg text-muted-foreground mb-6">
-          {page.subtitle}
-        </p>
-      )}
-
-      {page.description && (
-        <p className="text-base leading-relaxed max-w-3xl">
-          {page.description}
-        </p>
-      )}
-
-      {page.cta_label && page.cta_link && (
-        <a
-          href={page.cta_link}
-          className="inline-block mt-10 px-6 py-3 rounded-xl bg-primary text-white font-semibold hover:opacity-90 transition"
-        >
-          {page.cta_label}
-        </a>
-      )}
+      <div
+        dangerouslySetInnerHTML={{ __html: page.content }}
+      />
     </main>
-  );
+  )
 }
 ```
 
@@ -255,16 +270,19 @@ export default async function DynamicPage({ params }: PageProps) {
 
 1. **Uso de `notFound()`:** Quando `getPageBySlug` retorna `null`, o componente chama `notFound()`. Isso é **correto**, mas o problema está na **causa do `null`** (ver seção de hipóteses).
 
-2. **Tipagem de `params`:** O tipo `PageProps` está correto para Next.js 16:
+2. **Tipagem de `params`:** O tipo `PageProps` está atualizado para Next.js 16 (params é Promise):
    ```typescript
    type PageProps = {
-     params: {
-       slug: string;
-     };
-   };
+     params: Promise<{ slug: string }>
+   }
    ```
+   **⚠️ Mudança Importante:** No Next.js 16, `params` é uma Promise que precisa ser `await` antes de usar.
 
-3. **Async/Await:** O componente é `async`, o que está **correto** para Server Components que fazem fetch de dados.
+3. **Verificação de Status:** Agora verifica `page.status !== "published"` explicitamente no componente, permitindo flexibilidade na query.
+
+4. **Renderização de Conteúdo:** Usa `dangerouslySetInnerHTML` para renderizar HTML armazenado em `page.content`, indicando que o conteúdo é rico em HTML.
+
+5. **Async/Await:** O componente é `async`, o que está **correto** para Server Components que fazem fetch de dados. Agora também faz `await params` para acessar o slug.
 
 ### 3. Página 404 (`not-found.tsx`)
 
@@ -369,134 +387,137 @@ export const supabase = createClient(
 
 ### Estrutura da Tabela `pages`
 
-Com base na análise do código, inferimos a seguinte estrutura:
+**✅ REFATORADO:** O tipo `Page` foi unificado em `lib/types/pages.ts`.
 
-**Tipo em `services/pages.ts`:**
-```3:12:services/pages.ts
+**Tipo Unificado (Atual):**
+```1:9:lib/types/pages.ts
 export type Page = {
-  id: string;
-  slug: string | null;
-  title: string | null;
-  description: string | null;
-  image_url: string | null;
-  cta_label: string | null;
-  cta_link: string | null;
-  subtitle: string | null;
-};
+    id: string
+    slug: string
+    title: string
+    content: string
+    status: "draft" | "published"
+    created_at: string
+    updated_at?: string
+  }
 ```
 
-**Tipo em `lib/pages.ts` (DIFERENTE):**
-```7:15:lib/pages.ts
-export type Page = {
-  id: string;
-  slug: string;
-  title: string;
-  content: string | null;
-  image_url: string | null;
-  status: "draft" | "published";
-  created_at: string;
-};
-```
+**✅ Mudanças Importantes:**
 
-**⚠️ PROBLEMA CRÍTICO:** Existem **dois tipos diferentes** para a mesma entidade!
+1. **Campo `content`:** Substitui `description`, `subtitle`, `image_url`, `cta_label`, `cta_link`. Agora o conteúdo é HTML armazenado em um único campo.
+2. **Campo `status`:** Obrigatório, permite controlar publicação.
+3. **Campos de Timestamp:** `created_at` obrigatório, `updated_at` opcional.
+4. **Tipos Não-Nullable:** `slug` e `title` são obrigatórios (não podem ser `null`).
 
-### Campos da Tabela (Inferidos)
+### Campos da Tabela (Atual)
 
-| Campo | Tipo (`services/pages.ts`) | Tipo (`lib/pages.ts`) | Observação |
-|-------|---------------------------|----------------------|------------|
-| `id` | `string` | `string` | ✅ Consistente |
-| `slug` | `string \| null` | `string` | ⚠️ Inconsistente |
-| `title` | `string \| null` | `string` | ⚠️ Inconsistente |
-| `description` | `string \| null` | - | ❌ Ausente em `lib/pages.ts` |
-| `subtitle` | `string \| null` | - | ❌ Ausente em `lib/pages.ts` |
-| `content` | - | `string \| null` | ❌ Ausente em `services/pages.ts` |
-| `image_url` | `string \| null` | `string \| null` | ✅ Consistente |
-| `cta_label` | `string \| null` | - | ❌ Ausente em `lib/pages.ts` |
-| `cta_link` | `string \| null` | - | ❌ Ausente em `lib/pages.ts` |
-| `status` | - | `"draft" \| "published"` | ⚠️ **Crítico: não filtrado em `services/pages.ts`** |
-| `created_at` | - | `string` | ❌ Ausente em `services/pages.ts` |
+| Campo | Tipo | Obrigatório | Observação |
+|-------|------|-------------|------------|
+| `id` | `string` | ✅ Sim | UUID/Primary Key |
+| `slug` | `string` | ✅ Sim | URL-friendly identifier |
+| `title` | `string` | ✅ Sim | Título da página |
+| `content` | `string` | ✅ Sim | HTML completo do conteúdo |
+| `status` | `"draft" \| "published"` | ✅ Sim | Estado de publicação |
+| `created_at` | `string` | ✅ Sim | Data de criação (ISO string) |
+| `updated_at` | `string` | ❌ Opcional | Data de atualização |
+
+**⚠️ Observação:** O tipo antigo em `services/pages.ts` ainda existe mas não é mais utilizado. Deve ser removido para evitar confusão.
 
 ---
 
-## 🔄 Service Layer - Duplicação Crítica
+## 🔄 Service Layer - Arquitetura Atualizada
 
-### ⚠️ PROBLEMA CRÍTICO: Duplicação de Lógica
+### ✅ REFATORAÇÃO COMPLETA: Nova Organização
 
-O projeto possui **DOIS arquivos diferentes** com a função `getPageBySlug`:
+**ANTES:** Duplicação de código entre `services/pages.ts` e `lib/pages.ts`  
+**AGORA:** Organização clara com separação de responsabilidades:
 
-#### 1. `services/pages.ts` (✅ EM USO)
+#### 1. `lib/data/pages.ts` (✅ EM USO)
 
 **Usado em:**
-- `app/[slug]/page.tsx`
-- `app/not-found.tsx`
+- `app/[slug]/page.tsx` ✅
 
 **Código:**
-```14:27:services/pages.ts
+```4:18:lib/data/pages.ts
 export async function getPageBySlug(slug: string): Promise<Page | null> {
   const { data, error } = await supabase
     .from("pages")
     .select("*")
     .eq("slug", slug)
-    .single();
+    .limit(1)
+    .single()
 
   if (error) {
-    console.error("getPageBySlug error:", error.message);
-    return null;
+    console.error("getPageBySlug error:", error.message)
+    return null
   }
 
-  return data;
+  return data
 }
 ```
 
 **Características:**
-- ❌ **NÃO filtra por `status = "published"`** (busca rascunhos também)
-- ❌ Retorna `null` em caso de erro OU se não encontrar
-- ✅ Usa `.single()` corretamente
-- ⚠️ Log de erro no console (não ideal para produção)
+- ✅ **NÃO filtra por status na query** (permite flexibilidade)
+- ✅ Usa `.limit(1)` antes de `.single()` (melhor prática)
+- ✅ Importa tipo `Page` de `lib/types/pages.ts`
+- ✅ Retorna `null` em caso de erro
+- ⚠️ Log de erro no console
 
-#### 2. `lib/pages.ts` (❌ NÃO UTILIZADO)
+**Estratégia de Filtro:**
+A verificação de `status = "published"` foi **movida para o componente** (`app/[slug]/page.tsx`), permitindo:
+- Buscar páginas draft para preview (futuro)
+- Controle mais granular no nível da rota
+- Maior flexibilidade de uso
 
-**Não é usado em nenhum lugar do código atual.**
+#### 2. `lib/types/pages.ts` (✅ EM USO)
+
+**Usado em:**
+- `lib/data/pages.ts` (retorno da função)
+- `app/[slug]/page.tsx` (tipagem implícita)
 
 **Código:**
-```21:35:lib/pages.ts
-export async function getPageBySlug(slug: string) {
-  const { data, error } = await supabase
-    .from("pages")
-    .select("*")
-    .eq("slug", slug)
-    .eq("status", "published")
-    .single();
-
-  if (error) {
-    console.error("Erro ao buscar página:", error.message);
-    return null;
+```1:9:lib/types/pages.ts
+export type Page = {
+    id: string
+    slug: string
+    title: string
+    content: string
+    status: "draft" | "published"
+    created_at: string
+    updated_at?: string
   }
-
-  return data as Page;
-}
 ```
 
-**Características:**
-- ✅ **Filtra por `status = "published"`** (apenas páginas publicadas)
-- ✅ Retorna `null` em caso de erro OU se não encontrar
-- ✅ Usa `.single()` corretamente
-- ⚠️ Tipo de retorno diferente
+**Benefícios:**
+- ✅ **Tipo único e centralizado**
+- ✅ Separação clara: tipos vs. lógica
+- ✅ Facilita manutenção e evolução
 
-**Diferenças Críticas:**
+#### 3. `services/pages.ts` (❌ LEGACY - OBSOLETO)
 
-| Aspecto | `services/pages.ts` | `lib/pages.ts` |
-|---------|-------------------|----------------|
-| **Filtro de Status** | ❌ Não filtra | ✅ Filtra `status = "published"` |
-| **Tipo Page** | Diferente (7 campos) | Diferente (6 campos) |
-| **Em Uso** | ✅ Sim | ❌ Não |
-| **Comentários** | ❌ Sem documentação | ✅ Com documentação |
+**Status:** Não utilizado, deve ser removido.
 
-### Impacto da Duplicação
+**Problemas:**
+- ❌ Tipo `Page` antigo (campos diferentes)
+- ❌ Não está sendo importado em nenhum lugar ativo
+- ⚠️ Pode causar confusão se não for removido
 
-1. **Confusão de Manutenção:** Qual arquivo deve ser mantido?
-2. **Risco de Bugs:** A versão em uso não filtra por status (rascunhos podem aparecer)
-3. **Inconsistência de Tipos:** Dois tipos `Page` diferentes causam problemas de tipagem
+**⚠️ Observação:** `app/not-found.tsx` ainda importa de `@/services/pages`, o que pode causar incompatibilidade de tipos. Deve ser atualizado.
+
+### Nova Arquitetura
+
+```
+app/[slug]/page.tsx
+  └─→ lib/data/pages.ts (getPageBySlug)
+        └─→ lib/types/pages.ts (Page type)
+        └─→ lib/supabase.ts (cliente)
+```
+
+**Vantagens:**
+1. ✅ **Separação de responsabilidades:** Dados, tipos e configuração separados
+2. ✅ **Tipo unificado:** Uma única fonte de verdade para `Page`
+3. ✅ **Flexibilidade:** Filtro de status no componente permite reutilização
+4. ✅ **Manutenibilidade:** Estrutura clara e organizada
 
 ---
 
@@ -522,7 +543,7 @@ export async function getPageBySlug(slug: string) {
                  ▼
 ┌─────────────────────────────────────────────────────────────┐
 │ 4. Chama getPageBySlug("sobre")                             │
-│    Arquivo: services/pages.ts                               │
+│    Arquivo: lib/data/pages.ts                               │
 └────────────────┬────────────────────────────────────────────┘
                  │
                  ▼
@@ -535,8 +556,8 @@ export async function getPageBySlug(slug: string) {
                  ▼
 ┌─────────────────────────────────────────────────────────────┐
 │ 6. Query SQL executada:                                     │
-│    SELECT * FROM pages WHERE slug = 'sobre'                 │
-│    ⚠️ SEM FILTRO DE STATUS                                  │
+│    SELECT * FROM pages WHERE slug = 'sobre' LIMIT 1         │
+│    ⚠️ SEM FILTRO DE STATUS (verificação no componente)      │
 └────────────────┬────────────────────────────────────────────┘
                  │
                  ▼
@@ -549,7 +570,7 @@ export async function getPageBySlug(slug: string) {
                  ▼
 ┌─────────────────────────────────────────────────────────────┐
 │ 8. app/[slug]/page.tsx verifica:                            │
-│    if (!page) { notFound(); }                               │
+│    if (!page || page.status !== "published") { notFound(); }│
 └────────────────┬────────────────────────────────────────────┘
                  │
                  ▼
@@ -671,50 +692,55 @@ Isso significa que o header fixo aparece em todas as páginas, o que é **corret
 
 ### 🔴 Problemas Críticos
 
-#### 1. **Duplicação de Função `getPageBySlug`**
-- **Severidade:** ALTA
-- **Arquivos:** `services/pages.ts` (em uso) e `lib/pages.ts` (não usado)
-- **Impacto:** Confusão, manutenção duplicada, risco de inconsistências
-- **Solução Recomendada:** Manter apenas uma versão (preferencialmente `services/pages.ts` com filtro de status)
-
-#### 2. **Falta de Filtro de Status na Query**
-- **Severidade:** ALTA
+#### 1. **Arquivo Legacy `services/pages.ts` Não Removido** ✅ RESOLVIDO PARCIALMENTE
+- **Severidade:** MÉDIA
+- **Status:** Refatoração realizada, mas arquivo antigo ainda existe
 - **Arquivo:** `services/pages.ts`
-- **Impacto:** Páginas com `status = "draft"` podem ser exibidas publicamente
-- **Solução Recomendada:** Adicionar `.eq("status", "published")` na query
+- **Impacto:** Confusão sobre qual arquivo usar, possível importação acidental
+- **Solução Recomendada:** Remover `services/pages.ts` após confirmar que não é mais usado
 
-#### 3. **Variáveis de Ambiente Sem Validação**
+#### 2. **`app/not-found.tsx` Usa Importação Legacy** ⚠️ PENDENTE
+- **Severidade:** MÉDIA
+- **Arquivo:** `app/not-found.tsx`
+- **Impacto:** Incompatibilidade de tipos (`Page` antigo vs. novo), possíveis erros em runtime
+- **Solução Recomendada:** Atualizar para importar de `@/lib/data/pages` e ajustar código para novo tipo `Page`
+
+#### 3. **Filtro de Status no Componente** ✅ IMPLEMENTADO
+- **Severidade:** ✅ RESOLVIDO
+- **Status:** Verificação de `status !== "published"` agora ocorre no componente `app/[slug]/page.tsx`
+- **Observação:** Decisão arquitetural - permite flexibilidade futura para preview de drafts
+
+#### 4. **Variáveis de Ambiente Sem Validação**
 - **Severidade:** MÉDIA
 - **Arquivo:** `lib/supabase.ts`
 - **Impacto:** Se variáveis não existirem, a aplicação quebra silenciosamente
 - **Solução Recomendada:** Validar variáveis no início da aplicação
 
-#### 4. **Tipo `Page` Inconsistente**
-- **Severidade:** MÉDIA
-- **Arquivos:** `services/pages.ts` e `lib/pages.ts`
-- **Impacto:** Problemas de tipagem, campos ausentes/incompatíveis
-- **Solução Recomendada:** Unificar em um único tipo baseado no schema real do Supabase
+#### 5. **Tipo `Page` Unificado** ✅ RESOLVIDO
+- **Severidade:** ✅ RESOLVIDO
+- **Status:** Tipo centralizado em `lib/types/pages.ts`
+- **Benefício:** Uma única fonte de verdade, tipagem consistente
 
 ### 🟡 Problemas Menores
 
-#### 5. **Componente `Header.tsx` Não Utilizado**
+#### 6. **Componente `Header.tsx` Não Utilizado**
 - **Severidade:** BAIXA
 - **Impacto:** Código morto, confusão sobre qual header usar
 - **Solução Recomendada:** Remover ou migrar para uso no layout
 
-#### 6. **Logs de Erro no Console (Produção)**
+#### 7. **Logs de Erro no Console (Produção)**
 - **Severidade:** BAIXA
-- **Arquivo:** `services/pages.ts`, `lib/pages.ts`
+- **Arquivo:** `lib/data/pages.ts`
 - **Impacto:** Poluição de logs, possível exposição de informações sensíveis
 - **Solução Recomendada:** Usar sistema de logging adequado (ex: Sentry, LogRocket)
 
-#### 7. **Tratamento de Erro Genérico**
+#### 8. **Tratamento de Erro Genérico**
 - **Severidade:** MÉDIA
-- **Arquivo:** `services/pages.ts`
+- **Arquivo:** `lib/data/pages.ts`
 - **Impacto:** Qualquer erro do Supabase retorna `null`, tornando debugging difícil
 - **Solução Recomendada:** Diferenciar entre "página não encontrada" e "erro de conexão"
 
-#### 8. **Página `not-found.tsx` Depende do Supabase**
+#### 9. **Página `not-found.tsx` Depende do Supabase**
 - **Severidade:** MÉDIA
 - **Arquivo:** `app/not-found.tsx`
 - **Impacto:** Se o Supabase estiver offline, a página 404 pode não funcionar
@@ -809,7 +835,7 @@ SELECT slug, status FROM pages WHERE slug = 'sobre';
 
 **Solução:**
 - Alterar status para "published"
-- OU: adicionar filtro de status na query (ver `lib/pages.ts`)
+- ⚠️ **Nota:** A verificação de status agora ocorre no componente `app/[slug]/page.tsx` (linha 13)
 
 #### 🎯 **Hipótese 5: Erro de Conexão/Tempo Limite**
 **Probabilidade:** 20%
@@ -868,15 +894,15 @@ SELECT slug, status FROM pages WHERE slug = 'sobre';
 
 ### 🟡 Importante (Resolver Depois)
 
-- [ ] **Unificar função `getPageBySlug`**
-  - [ ] Decidir qual arquivo manter (`services/pages.ts` ou `lib/pages.ts`)
-  - [ ] Adicionar filtro de status se necessário
-  - [ ] Remover arquivo duplicado
+- [x] ~~**Unificar função `getPageBySlug`**~~ ✅ **RESOLVIDO**
+  - [x] ✅ Arquivo mantido: `lib/data/pages.ts`
+  - [x] ✅ Filtro de status movido para componente (flexibilidade)
+  - [ ] ⚠️ Remover arquivo legacy `services/pages.ts`
 
-- [ ] **Unificar tipo `Page`**
-  - [ ] Definir schema definitivo baseado no Supabase
-  - [ ] Criar tipo único em `lib/types.ts` ou similar
-  - [ ] Atualizar todos os arquivos que usam `Page`
+- [x] ~~**Unificar tipo `Page`**~~ ✅ **RESOLVIDO**
+  - [x] ✅ Tipo centralizado em `lib/types/pages.ts`
+  - [x] ✅ Baseado no novo schema do Supabase
+  - [ ] ⚠️ Atualizar `app/not-found.tsx` para usar novo tipo
 
 - [ ] **Adicionar validação de variáveis de ambiente**
   - [ ] Criar função `validateEnv()` em `lib/env.ts`
@@ -916,10 +942,10 @@ SELECT slug, status FROM pages WHERE slug = 'sobre';
 ### Estado Atual do Projeto
 
 - ✅ **Estrutura básica:** Bem organizada, segue padrões do Next.js App Router
-- ⚠️ **Roteamento dinâmico:** Implementado, mas retornando 404
+- ⚠️ **Roteamento dinâmico:** Implementado e refatorado (verificar se ainda retorna 404)
 - ⚠️ **Integração Supabase:** Configurada, mas sem validações robustas
-- ❌ **Service Layer:** Duplicação crítica de código
-- ⚠️ **Tipagem:** Inconsistências entre tipos `Page`
+- ✅ **Service Layer:** ✅ **REFATORADO** - Organização clara em `lib/data/` e `lib/types/`
+- ✅ **Tipagem:** ✅ **RESOLVIDO** - Tipo `Page` unificado em `lib/types/pages.ts`
 
 ### Causa Mais Provável do 404
 
@@ -929,8 +955,10 @@ SELECT slug, status FROM pages WHERE slug = 'sobre';
 
 1. **Imediato:** Verificar existência da página "sobre" no Supabase
 2. **Imediato:** Verificar/Configurar variáveis de ambiente
-3. **Curto Prazo:** Resolver duplicação de código em `services/` e `lib/`
-4. **Médio Prazo:** Adicionar validações e melhorar tratamento de erros
+3. **Curto Prazo:** ✅ **RESOLVIDO** - Refatoração do service layer concluída
+4. **Pendente:** Atualizar `app/not-found.tsx` para usar novo tipo `Page`
+5. **Pendente:** Remover arquivo legacy `services/pages.ts`
+6. **Médio Prazo:** Adicionar validações e melhorar tratamento de erros
 
 ---
 

@@ -1,18 +1,18 @@
-import { supabase } from "@/lib/supabase"
-import { Page } from "@/lib/types/pages"
+import { supabase } from "@/lib/supabase";
+import type { Page } from "@/lib/types/pages";
 
 export async function getPageBySlug(slug: string): Promise<Page | null> {
   const { data, error } = await supabase
     .from("pages")
     .select("*")
     .eq("slug", slug)
-    .limit(1)
-    .single()
+    .maybeSingle(); 
 
   if (error) {
-    console.error("getPageBySlug error:", error.message)
-    return null
+    // Erros reais de conexão ainda serão mostrados, o que é bom
+    console.error("Erro ao buscar página:", error.message);
+    return null;
   }
 
-  return data
+  return data;
 }

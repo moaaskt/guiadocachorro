@@ -4,6 +4,7 @@ export type Page = {
     title: string
     content: string
     status: "draft" | "published"
+    image_url?: string | null
     created_at: string
     updated_at?: string
   }

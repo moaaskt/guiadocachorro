@@ -14,13 +14,18 @@ export default async function DynamicPage({ params }: PageProps) {
     notFound()
   }
 
+  // Garante que content seja sempre uma string válida
+  const content = page.content || ""
+
   return (
     <main className="prose mx-auto py-10">
       <h1>{page.title}</h1>
 
-      <div
-        dangerouslySetInnerHTML={{ __html: page.content }}
-      />
+      {content && (
+        <div
+          dangerouslySetInnerHTML={{ __html: content }}
+        />
+      )}
     </main>
   )
 }

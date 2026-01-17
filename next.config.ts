@@ -22,7 +22,9 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        hostname: "ppvkpgrjsrftzdqkbgmi.supabase.co",
+        hostname: "ppvkpgrjsrftzdqkbgmi.supabase.co", // Seu bucket do Supabase
+        port: "",
+        pathname: "/storage/v1/object/public/**",
       },
     ],
   },
