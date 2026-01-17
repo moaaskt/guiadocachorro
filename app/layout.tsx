@@ -1,20 +1,13 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google"; // Usando Inter padrão (ou Geist se preferir)
 import "./globals.css";
+import { Header } from "@/components/Header"; // 👈 IMPORTANTE: Importando o componente
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Guia do Cachorro",
-  description: "Guia do Cachorro - Tudo o que você precisa saber para cuidar bem do seu cachorro",
+  description: "Tudo o que você precisa saber para cuidar bem do seu cachorro",
 };
 
 export default function RootLayout({
@@ -24,13 +17,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
-      <body>
-        {/* NAVBAR FIXA DO SITE */}
-        <header className="h-16 border-b">
-          <div className="mx-auto max-w-7xl px-6 h-full flex items-center font-bold">
-            Guia do Cachorro
-          </div>
-        </header>
+      <body className={`${inter.className} min-h-screen bg-white text-gray-900 antialiased`}>
+        
+       
+        <Header />
 
         {children}
       </body>
