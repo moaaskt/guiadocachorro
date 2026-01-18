@@ -1,38 +1,84 @@
-import { getAllArticles } from "@/lib/data/articles";
-import { ArticleCard } from "@/components/blog/ArticleCard";
+import { notFound } from "next/navigation";
+import Image from "next/image";
+import Link from "next/link";
+import { ArrowLeft, Calendar, Clock, Share2 } from "lucide-react";
+import { getArticleBySlug } from "@/lib/data/articles";
 
-export default async function BlogPage() {
-  const articles = await getAllArticles();
+interface Props {
+  params: Promise<{ slug: string }>;
+}
+
+export default async function ArticlePage({ params }: Props) {
+  // 1. Dedo-duro: Ver se o parametro chegou
+  const resolvedParams = await params;
+  const { slug } = resolvedParams;
+  console.log("🔍 TENTANDO ABRIR O SLUG:", slug);
+
+  // 2. Dedo-duro: Ver se achou no banco
+  const article = await getArticleBySlug(slug);
+  console.log("📦 RESULTADO DO BANCO:", article ? "ACHOU!" : "NÃO ACHOU (NULL)");
+
+  if (!article) {
+    console.log("❌ Artigo não encontrado, indo para 404...");
+    notFound();
+  }
+
+  // Se chegou aqui, é sucesso
+  const date = new Date(article.created_at).toLocaleDateString("pt-BR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 
   return (
-    <main className="min-h-screen bg-gray-50 pb-20 pt-24">
-      {/* CABEÇALHO DO BLOG */}
-      <div className="bg-white border-b border-gray-200 pb-16 pt-8 mb-12">
-        <div className="mx-auto max-w-7xl px-6 text-center">
-          <h1 className="text-4xl font-extrabold text-gray-900 md:text-5xl mb-4 tracking-tight">
-            Blog & Dicas
-          </h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Informação de qualidade, baseada em ciência e amor, para você cuidar melhor do seu melhor amigo.
-          </p>
+    <article className="min-h-screen bg-white pb-20 pt-24">
+      {/* CABEÇALHO */}
+      <header className="mx-auto max-w-3xl px-6 text-center mb-10">
+        <Link 
+          href="/blog" 
+          className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-blue-600 mb-8 transition-colors"
+        >
+          <ArrowLeft size={16} /> Voltar para o Blog
+        </Link>
+
+        <div className="flex items-center justify-center gap-2 mb-6">
+          <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold uppercase tracking-wider">
+            {article.category}
+          </span>
+        </div>
+
+        <h1 className="text-3xl md:text-5xl font-extrabold text-gray-900 tracking-tight leading-tight mb-6">
+          {article.title}
+        </h1>
+
+        <div className="flex items-center justify-center gap-6 text-gray-500 text-sm border-t border-b border-gray-100 py-4 mt-8">
+          <div className="flex items-center gap-2">
+            <Calendar size={16} />
+            {date}
+          </div>
+        </div>
+      </header>
+
+      {/* IMAGEM */}
+      <div className="mx-auto max-w-5xl px-6 mb-12">
+        <div className="relative aspect-video w-full overflow-hidden rounded-2xl shadow-xl shadow-gray-200/50">
+          <Image
+            src={article.image_url}
+            alt={article.title}
+            fill
+            className="object-cover"
+            priority
+          />
         </div>
       </div>
 
-      {/* LISTA DE ARTIGOS */}
-      <div className="mx-auto max-w-7xl px-6">
-        {articles.length > 0 ? (
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {articles.map((article) => (
-              <ArticleCard key={article.id} article={article} />
-            ))}
-          </div>
-        ) : (
-          // Estado Vazio (caso apague tudo do banco sem querer)
-          <div className="text-center py-20">
-            <p className="text-gray-500 text-lg">Nenhum artigo encontrado no momento.</p>
-          </div>
-        )}
+      {/* CONTEÚDO */}
+      <div className="mx-auto max-w-3xl px-6">
+        <div 
+          className="prose prose-lg prose-blue prose-headings:font-bold prose-img:rounded-xl text-gray-700 leading-relaxed"
+          dangerouslySetInnerHTML={{ __html: article.content || "<p>Conteúdo em breve...</p>" }}
+        />
       </div>
-    </main>
+    </article>
   );
 }
