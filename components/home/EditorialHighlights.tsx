@@ -7,6 +7,7 @@ interface Article {
   title: string;
   excerpt: string;
   image: string;
+  image_url: string;
   category: string;
   readTime: string;
 }
@@ -44,7 +45,7 @@ export function EditorialHighlights({ articles }: EditorialHighlightsProps) {
               <article className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 h-full flex flex-col">
                 <div className="relative h-64 overflow-hidden">
                   <Image
-                    src={article.image}
+                    src={article.image_url || article.image}
                     alt={article.title}
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-500"

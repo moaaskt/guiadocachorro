@@ -22,7 +22,7 @@ export function ArticleCard({ article }: { article: Article }) {
           src={article.image_url}
           alt={article.title}
           fill
-          className="object-cover transition-transform duration-500 group-hover:scale-105"
+          className="object-cover transition-all duration-500 ease-in-out group-hover:scale-110 group-hover:brightness-105"
         />
         {/* Badge de Categoria */}
         <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-blue-600 uppercase tracking-wide">
