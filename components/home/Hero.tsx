@@ -60,8 +60,8 @@ export function Hero() {
               priority
             />
 
-            {/* Overlay sutil */}
-            <div className="absolute inset-0 bg-gradient-to-tr from-black/10 to-transparent" />
+
+            <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-transparent z-10" />
           </motion.div>
         </motion.div>
 

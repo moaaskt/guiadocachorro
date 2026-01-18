@@ -1,19 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
 
-// Tipagem forte para garantir que o Intellisense te ajude
 export interface Breed {
   id: string;
   name: string;
   slug: string;
   category: string;
-  description: string;
   image_url: string;
+  stats: { label: string; value: number; color: string }[];
   characteristics: string[];
-  stats: {
-    label: string;
-    value: number;
-    color: string;
-  }[];
 }
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -35,17 +29,16 @@ export async function getBreedBySlug(slug: string): Promise<Breed | null> {
     return data as Breed;
   }
 
-// Função extra para listar todas na home
-export async function getAllBreeds() {
+  export async function getAllBreeds() {
     const { data, error } = await supabase
       .from("breeds")
-      .select("id, name, slug, category, image_url, stats") 
+      .select("id, name, slug, category, image_url, stats, characteristics")
       .order("name");
-    
+  
     if (error) {
       console.error("Erro ao buscar raças:", error);
       return [];
     }
-    
-  return data as Breed[];
-}
+  
+    return data as Breed[];
+  }
