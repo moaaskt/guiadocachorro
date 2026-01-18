@@ -1,9 +1,10 @@
 import { notFound } from "next/navigation";
 import Image from "next/image";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { getBreedBySlug } from "@/lib/data/breeds";
 import { BreedStats } from "@/components/breeds/BreedStats";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { TableOfContents } from "@/components/ui/TableOfContents";
+import type { TOCItem } from "@/lib/toc";
 
 // ⚠️ MUDANÇA CRÍTICA AQUI: Definimos params como uma Promise
 type Props = {
@@ -22,6 +23,18 @@ export default async function BreedDetailsPage({ params }: Props) {
     notFound();
   }
 
+  // Mapeamento manual das seções para o Table of Contents
+  const tocItems: TOCItem[] = [
+    {
+      id: "sobre",
+      text: "Sobre a Raça",
+      level: 2,
+    },
+    // Aqui você pode adicionar mais seções no futuro, ex:
+    // { id: "temperamento", text: "Temperamento", level: 2 },
+    // { id: "cuidados", text: "Cuidados", level: 2 },
+  ];
+
   return (
     <main className="min-h-screen bg-white pb-20">
       
@@ -38,16 +51,14 @@ export default async function BreedDetailsPage({ params }: Props) {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
 
-        <Link 
-          href="/racas"
-          className="absolute top-6 left-6 z-10 flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-medium text-white backdrop-blur-md transition hover:bg-white/20"
-        >
-          <ArrowLeft size={16} /> Voltar
-        </Link>
+        {/* Breadcrumb com nome da raça */}
+        <div className="absolute top-6 left-6 z-10">
+          <Breadcrumb currentPageName={breed.name} />
+        </div>
 
         <div className="absolute bottom-0 left-0 w-full p-6 md:p-12">
           <div className="mx-auto max-w-7xl">
-            <span className="mb-2 inline-block rounded-full bg-blue-600 px-3 py-1 text-xs font-bold text-white uppercase tracking-wider">
+            <span className="mb-2 inline-block rounded-full bg-primary px-3 py-1 text-xs font-bold text-white uppercase tracking-wider">
               {breed.category}
             </span>
             <h1 className="text-5xl font-extrabold text-white md:text-7xl tracking-tight">
@@ -59,11 +70,23 @@ export default async function BreedDetailsPage({ params }: Props) {
 
       {/* CONTEÚDO */}
       <div className="mx-auto max-w-7xl px-6 -mt-10 relative z-10">
-        <div className="grid grid-cols-1 gap-10 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
           
-          <div className="lg:col-span-2 space-y-8">
+          {/* SIDEBAR ESQUERDA - Table of Contents (Desktop XL) */}
+          <aside className="hidden xl:block xl:col-span-2">
+            <TableOfContents 
+              items={tocItems} 
+              backLink="/racas" 
+              backLabel="Voltar para Raças" 
+            />
+          </aside>
+
+          {/* CONTEÚDO PRINCIPAL */}
+          <div className="lg:col-span-8 xl:col-span-7 space-y-8">
             <div className="rounded-3xl bg-white p-8 shadow-xl shadow-gray-200/50 border border-gray-100">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Sobre a Raça</h2>
+              <h2 id="sobre" className="text-2xl font-bold text-gray-900 mb-4 scroll-mt-24">
+                Sobre a Raça
+              </h2>
               <p className="text-lg leading-relaxed text-gray-600">
                 {breed.description ?? ""}
               </p>
@@ -79,15 +102,16 @@ export default async function BreedDetailsPage({ params }: Props) {
             </div>
           </div>
 
-          <div className="space-y-6">
+          {/* SIDEBAR DIREITA - Stats e CTA */}
+          <div className="lg:col-span-4 xl:col-span-3 space-y-6">
             <BreedStats stats={breed.stats} />
             
-            <div className="rounded-3xl bg-blue-600 p-8 text-white shadow-xl shadow-blue-600/20">
+            <div className="rounded-3xl bg-primary p-8 text-white shadow-xl shadow-slate-900/20">
               <h3 className="text-xl font-bold mb-2">Gostou do {breed.name}?</h3>
-              <p className="text-blue-100 mb-6 text-sm">
+              <p className="text-slate-200 mb-6 text-sm">
                 Encontre canis responsáveis ou grupos de adoção.
               </p>
-              <button className="w-full rounded-xl bg-white py-3 font-bold text-blue-600 hover:bg-blue-50 transition">
+              <button className="w-full rounded-xl bg-white py-3 font-bold text-primary hover:bg-slate-50 transition">
                 Buscar Parceiros
               </button>
             </div>

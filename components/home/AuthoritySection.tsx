@@ -52,8 +52,8 @@ export function AuthoritySection() {
             >
               {/* Icon */}
               <div className="flex-shrink-0">
-                <div className="w-12 h-12 rounded-xl bg-blue-600/10 flex items-center justify-center">
-                  <item.icon className="w-6 h-6 text-blue-600" />
+                <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center">
+                  <item.icon className="w-6 h-6 text-accent" />
                 </div>
               </div>
 

@@ -44,7 +44,7 @@ export function PopularBreeds() {
 
         <a
           href="/racas"
-          className="text-sm font-semibold text-blue-600 hover:underline"
+          className="text-sm font-semibold text-accent hover:underline"
         >
           Ver todas →
         </a>

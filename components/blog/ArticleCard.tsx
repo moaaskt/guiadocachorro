@@ -25,7 +25,7 @@ export function ArticleCard({ article }: { article: Article }) {
           className="object-cover transition-all duration-500 ease-in-out group-hover:scale-110 group-hover:brightness-105"
         />
         {/* Badge de Categoria */}
-        <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-blue-600 uppercase tracking-wide">
+        <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-accent uppercase tracking-wide">
           {article.category}
         </div>
       </div>
@@ -37,7 +37,7 @@ export function ArticleCard({ article }: { article: Article }) {
           {date}
         </div>
 
-        <h3 className="text-xl font-bold text-gray-900 mb-3 leading-tight group-hover:text-blue-600 transition-colors">
+        <h3 className="text-xl font-bold text-gray-900 mb-3 leading-tight group-hover:text-accent transition-colors">
           {article.title}
         </h3>
 
@@ -45,7 +45,7 @@ export function ArticleCard({ article }: { article: Article }) {
           {article.excerpt}
         </p>
 
-        <div className="flex items-center gap-2 text-blue-600 font-semibold text-sm mt-auto">
+        <div className="flex items-center gap-2 text-accent font-semibold text-sm mt-auto">
           Ler artigo completo <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
         </div>
       </div>
