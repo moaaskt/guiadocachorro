@@ -9,26 +9,21 @@ interface Props {
 }
 
 export default async function ArticlePage({ params }: Props) {
-  // 1. Dedo-duro: Ver se o parametro chegou
-  const resolvedParams = await params;
-  const { slug } = resolvedParams;
-  console.log("🔍 TENTANDO ABRIR O SLUG:", slug);
-
-  // 2. Dedo-duro: Ver se achou no banco
+  const { slug } = await params;
   const article = await getArticleBySlug(slug);
-  console.log("📦 RESULTADO DO BANCO:", article ? "ACHOU!" : "NÃO ACHOU (NULL)");
 
   if (!article) {
-    console.log("❌ Artigo não encontrado, indo para 404...");
     notFound();
   }
 
-  // Se chegou aqui, é sucesso
   const date = new Date(article.created_at).toLocaleDateString("pt-BR", {
     day: "numeric",
     month: "long",
     year: "numeric",
   });
+
+  // Calculando tempo de leitura baseado no tamanho do texto (simples)
+  const readingTime = Math.ceil((article.content?.length || 0) / 1000) || 5;
 
   return (
     <article className="min-h-screen bg-white pb-20 pt-24">
@@ -56,6 +51,14 @@ export default async function ArticlePage({ params }: Props) {
             <Calendar size={16} />
             {date}
           </div>
+          <div className="flex items-center gap-2">
+            <Clock size={16} />
+            {readingTime} min de leitura
+          </div>
+          <button className="flex items-center gap-2 hover:text-blue-600 transition">
+            <Share2 size={16} />
+            Compartilhar
+          </button>
         </div>
       </header>
 
@@ -72,12 +75,18 @@ export default async function ArticlePage({ params }: Props) {
         </div>
       </div>
 
-      {/* CONTEÚDO */}
+      {/* CONTEÚDO RICO (HTML) */}
       <div className="mx-auto max-w-3xl px-6">
         <div 
           className="prose prose-lg prose-blue prose-headings:font-bold prose-img:rounded-xl text-gray-700 leading-relaxed"
-          dangerouslySetInnerHTML={{ __html: article.content || "<p>Conteúdo em breve...</p>" }}
+          dangerouslySetInnerHTML={{ __html: article.content }}
         />
+        
+        {/* Sessão de Comentários (Futuro) */}
+        <div className="mt-16 p-8 bg-gray-50 rounded-2xl text-center border border-gray-100">
+          <p className="text-gray-500 mb-2">Gostou do artigo?</p>
+          <p className="font-semibold text-gray-900">Em breve você poderá comentar aqui!</p>
+        </div>
       </div>
     </article>
   );

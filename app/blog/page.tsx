@@ -33,7 +33,7 @@ export default async function BlogPage() {
         {articles && articles.length > 0 ? (
           <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
             {articles.map((article) => (
-              <ArticleCard key={article.id} article={article} />
+              <ArticleCard key={article.id || article.slug} article={article} />
             ))}
           </div>
         ) : (
