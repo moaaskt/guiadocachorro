@@ -22,14 +22,14 @@ export function Hero() {
           <div className="mt-8 flex flex-col sm:flex-row gap-4">
             <a
               href="/racas"
-              className="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
+              className="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-primary text-white font-semibold hover:bg-primary-hover transition"
             >
               Explorar Raças
             </a>
 
             <a
               href="/blog"
-              className="inline-flex items-center justify-center px-6 py-3 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-100 transition"
+              className="inline-flex items-center justify-center px-6 py-3 rounded-lg border border-slate-300 text-slate-700 font-semibold hover:bg-slate-100 transition"
             >
               Ler Guias
             </a>
@@ -44,7 +44,7 @@ export function Hero() {
           className="relative group"
         >
           {/* Glow */}
-          <div className="absolute -inset-1 rounded-2xl bg-gradient-to-tr from-blue-500/20 to-cyan-400/20 blur-lg opacity-70 group-hover:opacity-100 transition" />
+          <div className="absolute -inset-1 rounded-2xl bg-gradient-to-tr from-amber-500/20 to-amber-400/20 blur-lg opacity-70 group-hover:opacity-100 transition" />
 
           {/* Card da imagem */}
           <motion.div
