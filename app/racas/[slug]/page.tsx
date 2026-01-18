@@ -65,7 +65,7 @@ export default async function BreedDetailsPage({ params }: Props) {
             <div className="rounded-3xl bg-white p-8 shadow-xl shadow-gray-200/50 border border-gray-100">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">Sobre a Raça</h2>
               <p className="text-lg leading-relaxed text-gray-600">
-                {breed.description}
+                {breed.description ?? ""}
               </p>
               
               <div className="mt-8 grid gap-4 sm:grid-cols-2">

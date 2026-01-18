@@ -79,7 +79,7 @@ export default async function ArticlePage({ params }: Props) {
       <div className="mx-auto max-w-3xl px-6">
         <div 
           className="prose prose-lg prose-blue prose-headings:font-bold prose-img:rounded-xl text-gray-700 leading-relaxed"
-          dangerouslySetInnerHTML={{ __html: article.content }}
+          dangerouslySetInnerHTML={{ __html: article.content || "" }}
         />
         
         {/* Sessão de Comentários (Futuro) */}

@@ -6,6 +6,7 @@ export interface Breed {
   slug: string;
   category: string;
   image_url: string;
+  description?: string;
   stats: { label: string; value: number; color: string }[];
   characteristics: string[];
 }
@@ -32,7 +33,7 @@ export async function getBreedBySlug(slug: string): Promise<Breed | null> {
   export async function getAllBreeds() {
     const { data, error } = await supabase
       .from("breeds")
-      .select("id, name, slug, category, image_url, stats, characteristics")
+    .select("id, name, slug, category, image_url, description, stats, characteristics")
       .order("name");
   
     if (error) {
