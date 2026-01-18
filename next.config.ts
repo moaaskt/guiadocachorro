@@ -14,6 +14,10 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
+        hostname: "randomuser.me", 
+      },
+      {
+        protocol: "https",
         hostname: "images.dog.ceo",
       },
       {
@@ -22,7 +26,7 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        hostname: "ppvkpgrjsrftzdqkbgmi.supabase.co", // Seu bucket do Supabase
+        hostname: "ppvkpgrjsrftzdqkbgmi.supabase.co", 
         port: "",
         pathname: "/storage/v1/object/public/**",
       },
