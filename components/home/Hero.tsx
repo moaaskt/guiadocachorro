@@ -21,14 +21,14 @@ export function Hero() {
 
           <div className="mt-8 flex flex-col sm:flex-row gap-4">
             <a
-              href="#"
+              href="/racas"
               className="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
             >
               Explorar Raças
             </a>
 
             <a
-              href="#"
+              href="/blog"
               className="inline-flex items-center justify-center px-6 py-3 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-100 transition"
             >
               Ler Guias
