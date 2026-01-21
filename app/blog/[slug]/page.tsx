@@ -5,6 +5,7 @@ import { getArticleBySlug } from "@/lib/data/articles";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { processContent } from "@/lib/toc";
 import { TableOfContents } from "@/components/ui/TableOfContents";
+import { MobileTOC } from "@/components/ui/MobileTOC";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -89,6 +90,9 @@ export default async function ArticlePage({ params }: Props) {
               backLabel="Voltar para o Blog" 
             />
           </aside>
+
+          {/* MOBILE TOC - Barra Flutuante (Mobile) */}
+          <MobileTOC items={toc} />
 
           {/* CONTEÚDO PRINCIPAL */}
           <div className="lg:col-span-9">

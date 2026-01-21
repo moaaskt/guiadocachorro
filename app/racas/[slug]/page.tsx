@@ -4,6 +4,7 @@ import { getBreedBySlug } from "@/lib/data/breeds";
 import { BreedStats } from "@/components/breeds/BreedStats";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { TableOfContents } from "@/components/ui/TableOfContents";
+import { MobileTOC } from "@/components/ui/MobileTOC";
 import type { TOCItem } from "@/lib/toc";
 
 // ⚠️ MUDANÇA CRÍTICA AQUI: Definimos params como uma Promise
@@ -80,6 +81,9 @@ export default async function BreedDetailsPage({ params }: Props) {
               backLabel="Voltar para Raças" 
             />
           </aside>
+
+          {/* MOBILE TOC - Barra Flutuante (Mobile) */}
+          <MobileTOC items={tocItems} />
 
           {/* CONTEÚDO PRINCIPAL */}
           <div className="lg:col-span-8 xl:col-span-7 space-y-8">
