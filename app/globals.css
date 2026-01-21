@@ -4,27 +4,30 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  /* Cores Base - O Creme do Fundo */
-  --background: #FDFCF8; 
-  --foreground: #1C3A35; /* Texto padrão agora é Verde Escuro, não preto */
+  /* Cores Base - Off-White/Sand Premium */
+  --background: #F8FAFC; 
+  --foreground: #0F172A; /* Deep Navy - Textos principais */
 
-  /* PALETA EDITORIAL (A Mágica Acontece Aqui) */
+  /* PALETA PREMIUM PET (Revista Especializada) */
   
-  /* Primary: Verde Floresta (Autoridade, Confiança, Natureza) */
-  --color-primary: #1C3A35;
+  /* Primary: Deep Navy (Autoridade, Profissionalismo, Confiança) */
+  --color-primary: #0F172A; /* Slate-900 */
   --color-primary-foreground: #FFFFFF;
-  --color-primary-hover: #2A524B;
+  --color-primary-hover: #1E293B; /* Slate-800 */
 
-  /* Surface: O Creme Acolhedor (Fundo do site, cards) */
-  --color-surface: #FDFCF8;
-  --color-surface-hover: #F5F5F0;
+  /* Surface: Off-White Sand (Fundo acolhedor, cards) */
+  --color-surface: #F8FAFC; /* Slate-50 */
+  --color-surface-hover: #F1F5F9; /* Slate-100 */
 
-  /* Accent: Âmbar/Laranja (Calor, Energia, Ação) */
-  --color-accent: #F59E0B;
-  --color-accent-foreground: #1C3A35;
-  --color-accent-hover: #D97706;
+  /* Accent: Warm Amber (Calor, Energia, Destaques) */
+  --color-accent: #D97706; /* Amber-600 */
+  --color-accent-foreground: #FFFFFF;
+  --color-accent-hover: #B45309; /* Amber-700 */
 
-  /* Neutros Quentes (Stone) - Para bordas e textos secundários */
+  /* Accent Light: Para fundos suaves de destaque */
+  --color-accent-light: #FEF3C7; /* Amber-100 */
+
+  /* Neutros (Stone/Slate) - Para bordas e textos secundários */
   --color-stone-50: #FAFAF9;
   --color-stone-100: #F5F5F4;
   --color-stone-200: #E7E5E4;
@@ -45,6 +48,7 @@
   --color-accent: var(--color-accent);
   --color-accent-foreground: var(--color-accent-foreground);
   --color-accent-hover: var(--color-accent-hover);
+  --color-accent-light: var(--color-accent-light);
   
   --color-stone-50: var(--color-stone-50);
   --color-stone-100: var(--color-stone-100);
