@@ -129,6 +129,33 @@ Em dispositivos móveis, a sidebar é substituída por uma **Navegação Flutuan
 - **Descrição**: Navegação estrutural (migalhas de pão) para orientar o usuário na hierarquia do site.
 - **Funcionalidade**: Mapeia rotas (`/racas`, `/blog`) para nomes amigáveis ("Guia de Raças", "Blog").
 
+### Ferramentas Interativas (Saúde)
+
+#### `DogAgeCalculator`
+- **Arquivo**: `components/tools/DogAgeCalculator.tsx`
+- **Função**: Calcula a “idade humana” equivalente do cão com base na idade real e no porte (Pequeno, Médio, Grande).
+- **Tecnologias**: `framer-motion` para transições suaves (entrada do componente, troca de imagem por fase de vida, animação do valor do resultado), Tailwind CSS v4 para estilização.
+- **Lógica de Cálculo**:
+  - 0 anos → 0 humano
+  - ≤ 1 ano → 15 humanos
+  - ≤ 2 anos → 24 humanos
+  - Após 2 anos:
+    - Pequeno: 24 + (anos − 2) × 4
+    - Médio: 24 + (anos − 2) × 5
+    - Grande: 24 + (anos − 2) × 6
+- **Interface**: Controle de porte por botões com ícones e slider de idade (0–20 anos). Exibe o valor calculado com animação e uma badge de fase de vida.
+
+#### `SymptomChecker`
+- **Arquivo**: `components/tools/SymptomChecker.tsx`
+- **Função**: Mapa anatômico interativo (SVG) com hotspots clicáveis que revelam um painel de detalhes com sintomas/cuidados por região.
+- **Tecnologias**: SVG com silhueta realista do cão (`viewBox="0 0 200 150"`, `preserveAspectRatio="xMidYMid meet"`), hotspots com animação `animate-ping`, `framer-motion` para o painel (entradas/saídas), Tailwind CSS v4 (glassmorphism no painel).
+- **Lógica**:
+  - Estrutura `BODY_PARTS` contendo id, label, coordenadas `x`/`y` em porcentagem e lista de sintomas.
+  - Hotspots posicionados absolutamente sobre o container relativo do SVG (`left: X%`, `top: Y%`), com z-index elevado para garantir clicabilidade.
+  - Gestão de estado `selectedPart` para controlar o painel de detalhes e conteúdo exibido.
+- **UX Mobile**:
+  - `useEffect` monitora mudanças em `selectedPart` e, em telas < 1024px, faz scroll automático do painel para a viewport (`detailsRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" })`).
+
 ---
 
 ## 🛣️ Sistema de Rotas Dinâmicas
@@ -171,7 +198,7 @@ Quando uma rota não é encontrada:
 | `/blog/[slug]` | `app/blog/[slug]/page.tsx` | Dinâmica | Leitura de artigo com TOC e conteúdo rico. |
 | `/racas` | `app/racas/page.tsx` | Estática | Catálogo de raças com busca e filtros. |
 | `/racas/[slug]` | `app/racas/[slug]/page.tsx` | Dinâmica | Detalhes completos da raça. |
-| `/saude` | *(Pendente)* | - | Futura seção de saúde. |
+| `/saude` | `app/saude/page.tsx` | Estática | Hub de Saúde - Página principal que agrega as ferramentas interativas `DogAgeCalculator` e `SymptomChecker`. |
 
 ---
 
@@ -192,15 +219,19 @@ Quando uma rota não é encontrada:
 - [x] **Páginas Dinâmicas** (`/[slug]`) ✅
   - [x] Fetching do Supabase ✅
   - [x] Tratamento de 404 ✅
+- [x] **Sessão Saúde** (`/saude`) com ferramentas interativas (`DogAgeCalculator`, `SymptomChecker`) ✅
 
 ### Roadmap e Próximos Passos
 
-#### 🟡 Sessão Saúde (Pendente / Próximo Passo)
-- **Objetivo**: Criar um hub de conteúdo focado em saúde veterinária.
-- **Escopo**:
-  - Listagem de artigos categorizados por "Saúde".
-  - Guias de sintomas e prevenção.
-  - Calculadoras de saúde (IMC canino, idade real).
+#### 🟢 Sessão Saúde (Implementada)
+- **Descrição**: Hub de Saúde com ferramentas interativas para idade canina e verificação de sintomas.
+- **Conteúdo**:
+  - `DogAgeCalculator`: Conversão de idade canina para equivalente humano com base no porte.
+  - `SymptomChecker`: Mapa anatômico interativo com hotspots e painel de detalhes.
+
+#### 🔮 Em Breve (Ferramentas de Saúde)
+- Calculadora de IMC Canino
+- Guia de Vacinas e Cuidados Preventivos
 
 #### 🔄 Melhorias em Andamento
 - [ ] **Sanitização de HTML**: Implementar `dompurify` para renderização segura de conteúdo rico.

@@ -1,192 +1,122 @@
 "use client";
 
-import { useState } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ChevronRight, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Dados dos Sintomas (Hardcoded por enquanto)
-const BODY_PARTS = [
-  {
-    id: "ears",
-    label: "Orelhas",
-    x: 22,
-    y: 18,
-    symptoms: ["Coceira excessiva", "Cheiro forte", "Vermelhidão", "Sacudir a cabeça"],
-  },
-  {
-    id: "eyes",
-    label: "Olhos",
-    x: 32,
-    y: 22,
-    symptoms: ["Lacrimejamento", "Olhos vermelhos", "Manchas ou névoa", "Secreção amarelada"],
-  },
-  {
-    id: "mouth",
-    label: "Boca & Dentes",
-    x: 38,
-    y: 30,
-    symptoms: ["Mau hálito", "Gengiva inchada/sangrando", "Dificuldade para comer", "Baba excessiva"],
-  },
-  {
-    id: "skin",
-    label: "Pele & Pelo",
-    x: 55,
-    y: 45,
-    symptoms: ["Queda de pelo (falhas)", "Feridas ou crostas", "Carrapatos/Pulgas", "Caroços"],
-  },
-  {
-    id: "stomach",
-    label: "Estômago & Digestão",
-    x: 62,
-    y: 58,
-    symptoms: ["Vômitos frequentes", "Diarreia", "Falta de apetite", "Barriga inchada"],
-  },
-  {
-    id: "legs",
-    label: "Patas & Articulações",
-    x: 45,
-    y: 85,
-    symptoms: ["Mancar ao andar", "Lamber as patas compulsivamente", "Dificuldade para levantar", "Unhas grandes"],
-  },
-  {
-    id: "tail",
-    label: "Cauda",
-    x: 88,
-    y: 45,
-    symptoms: ["Perseguir a cauda", "Cauda baixa/entre as pernas (medo/dor)", "Mordiscar a base"],
-  },
+type BodyPart = {
+  id: string;
+  label: string;
+  x: number;
+  y: number;
+  symptoms: string[];
+};
+
+const BODY_PARTS: BodyPart[] = [
+  { id: "ears", label: "Orelhas", x: 23, y: 20, symptoms: ["Coçar excessivo", "Cheiro forte", "Vermelhidão"] },
+  { id: "eyes", label: "Olhos", x: 30, y: 25, symptoms: ["Lacrimejar", "Vermelhidão", "Manchas"] },
+  { id: "mouth", label: "Boca", x: 35, y: 35, symptoms: ["Mau hálito", "Gengiva inchada", "Dificuldade a comer"] },
+  { id: "skin", label: "Pele/Pelo", x: 50, y: 45, symptoms: ["Queda de pelo", "Feridas", "Carraças/Pulgas"] },
+  { id: "stomach", label: "Barriga", x: 58, y: 60, symptoms: ["Vómitos", "Diarreia", "Falta de apetite"] },
+  { id: "legs", label: "Patas/Articulações", x: 45, y: 85, symptoms: ["Mancar", "Lamber as patas", "Dificuldade a levantar"] },
+  { id: "tail", label: "Cauda", x: 90, y: 45, symptoms: ["Perseguir a cauda", "Cauda baixa/entre pernas"] },
 ];
 
 export default function SymptomChecker() {
-  const [selectedPart, setSelectedPart] = useState<typeof BODY_PARTS[0] | null>(null);
+  const [selectedPart, setSelectedPart] = useState<BodyPart | null>(null);
+  const panelKey = useMemo(() => selectedPart?.id ?? "none", [selectedPart]);
+  const detailsRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (selectedPart && typeof window !== "undefined" && window.innerWidth < 1024) {
+      detailsRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [selectedPart]);
 
   return (
     <motion.section
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, ease: "easeOut" }}
-      className="isolate w-full max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 items-center"
+      className="isolate w-full max-w-5xl mx-auto"
     >
-      {/* 1. ÁREA DO MAPA (ESQUERDA) */}
-      <div className="relative aspect-[4/3] w-full max-w-md mx-auto lg:max-w-none">
-        
-        {/* SVG DO CÃO (CAMADA 0 - FUNDO) */}
-        {/* Usando pointer-events-none para o desenho não bloquear os cliques */}
-        <svg 
-          viewBox="0 0 100 100" 
-          preserveAspectRatio="xMidYMid meet" 
-          className="absolute inset-0 w-full h-full text-slate-200 z-0 pointer-events-none"
-        >
-            {/* Silhueta Simplificada de um Cão (Estilo Vetorial Abstrato) */}
-            <path
-              fill="currentColor"
-              d="M20,40 Q25,10 40,20 Q45,25 50,25 Q60,20 80,30 Q95,35 90,50 Q85,60 88,70 Q80,80 70,70 L65,90 L55,90 L58,70 Q50,75 45,70 L40,90 L30,90 L35,60 Q25,65 20,50 Z" 
-              className="opacity-50"
-            />
-            {/* Outline para dar acabamento */}
-            <path
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="0.5"
-              d="M20,40 Q25,10 40,20 Q45,25 50,25 Q60,20 80,30 Q95,35 90,50 Q85,60 88,70 Q80,80 70,70 L65,90 L55,90 L58,70 Q50,75 45,70 L40,90 L30,90 L35,60 Q25,65 20,50 Z" 
-            />
-        </svg>
-
-        {/* HOTSPOTS (CAMADA 10 - CLICÁVEIS) */}
-        {BODY_PARTS.map((part) => (
-          <button
-            key={part.id}
-            onClick={() => setSelectedPart(part)}
-            style={{ left: `${part.x}%`, top: `${part.y}%` }}
-            className={cn(
-              "group absolute -translate-x-1/2 -translate-y-1/2 z-10 focus:outline-none",
-              "transition-transform duration-300 hover:scale-125"
-            )}
-            aria-label={`Ver sintomas de ${part.label}`}
-          >
-            {/* Anel de Pulso */}
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75 duration-1000"></span>
-            
-            {/* Ponto Central */}
-            <span className={cn(
-              "relative inline-flex h-4 w-4 rounded-full border-2 border-white shadow-md transition-colors",
-              selectedPart?.id === part.id ? "bg-white border-accent scale-110" : "bg-accent"
-            )}></span>
-
-            {/* Tooltip Hover (Opcional) */}
-            <span className="absolute left-1/2 -translate-x-1/2 -top-8 px-2 py-1 bg-slate-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-              {part.label}
-            </span>
-          </button>
-        ))}
-      </div>
-
-      {/* 2. PAINEL DE DETALHES (DIREITA/BAIXO) */}
-      <div className="relative z-20 min-h-[300px] w-full">
-        <AnimatePresence mode="wait">
-          {selectedPart ? (
-            <motion.div
-              key={selectedPart.id}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="relative z-20 bg-white/90 backdrop-blur-lg border border-white/40 shadow-xl shadow-black/5 rounded-2xl p-6 md:p-8"
-            >
-              <div className="flex justify-between items-start mb-6">
-                <div>
-                  <h3 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                    {selectedPart.label}
-                  </h3>
-                  <p className="text-slate-500 text-sm mt-1">Sinais de alerta comuns nesta região</p>
-                </div>
-                <button 
-                  onClick={() => setSelectedPart(null)}
-                  className="p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+      <div className="grid lg:grid-cols-2 gap-8 items-start">
+        <div className="relative rounded-3xl border border-gray-200/60 bg-white/70 backdrop-blur-md shadow-2xl overflow-hidden">
+          <div className="p-5 md:p-6">
+            <h2 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">Mapa Anatómico Interativo</h2>
+            <p className="text-sm text-gray-600">Clique nos pontos para ver sintomas e cuidados comuns.</p>
+          </div>
+          <div className="px-5 md:px-6 pb-6">
+            <div className="relative aspect-[4/3] rounded-2xl bg-slate-50 overflow-hidden">
+              <svg viewBox="0 0 200 150" preserveAspectRatio="xMidYMid meet" className="absolute inset-0 w-full h-full text-slate-200 pointer-events-none z-0">
+                <path
+                  d="M48,50 C45,40 50,25 65,20 C75,17 85,25 90,40 C100,42 130,42 150,35 C160,32 175,25 185,45 C190,55 180,65 175,60 C175,70 180,80 185,75 C185,85 180,95 175,90 L170,110 L155,110 L160,90 C150,95 130,95 120,90 L115,110 L100,110 L105,85 C95,90 75,90 65,80 L60,110 L45,110 L50,80 C40,75 35,70 35,60 C30,65 20,60 20,50 Z"
+                  fill="currentColor"
+                />
+              </svg>
+              {BODY_PARTS.map((part) => (
+                <button
+                  key={part.id}
+                  type="button"
+                  aria-label={part.label}
+                  onClick={() => setSelectedPart(part)}
+                  className={cn("group absolute -translate-x-1/2 -translate-y-1/2 z-10 cursor-pointer focus:outline-none")}
+                  style={{ left: `${part.x}%`, top: `${part.y}%` }}
                 >
-                  <X size={20} />
+                  <span className="relative flex h-6 w-6 md:h-8 md:w-8">
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-accent opacity-40 animate-ping" />
+                    <span className="relative inline-flex rounded-full h-full w-full bg-accent border-2 border-white shadow-md" />
+                  </span>
                 </button>
-              </div>
+              ))}
+            </div>
+          </div>
+        </div>
 
-              <ul className="space-y-3">
-                {selectedPart.symptoms.map((symptom, idx) => (
-                  <motion.li 
-                    key={idx}
-                    initial={{ opacity: 0, x: 10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: idx * 0.1 }}
-                    className="flex items-start gap-3 p-3 rounded-lg bg-slate-50 border border-slate-100 text-slate-700"
+        <div className="w-full">
+          <AnimatePresence mode="wait">
+            {selectedPart && (
+              <motion.div
+                key={panelKey}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 20 }}
+                transition={{ duration: 0.35, ease: "easeOut" }}
+                className="relative z-20 bg-white/90 backdrop-blur-lg border border-white/40 shadow-xl shadow-black/5 rounded-2xl p-6"
+                ref={detailsRef}
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-900">{selectedPart.label}</h3>
+                    <p className="text-sm text-gray-500">Sintomas e cuidados comuns</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPart(null)}
+                    className="rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50 px-3 py-1.5 text-sm font-bold"
                   >
-                    <AlertCircle className="w-5 h-5 text-accent shrink-0 mt-0.5" />
-                    <span>{symptom}</span>
-                  </motion.li>
-                ))}
-              </ul>
-
-              <div className="mt-8 pt-6 border-t border-slate-100">
-                <a href="/blog" className="flex items-center gap-2 text-sm font-bold text-accent hover:text-amber-700 transition-colors group">
-                  Ver artigos relacionados <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
-                </a>
-              </div>
-            </motion.div>
-          ) : (
-            // ESTADO VAZIO (Placeholder)
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex flex-col items-center justify-center h-full text-center p-8 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50"
-            >
-              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-300">
-                <ChevronRight size={32} />
-              </div>
-              <h3 className="text-lg font-bold text-slate-400">Selecione uma área</h3>
-              <p className="text-slate-400 text-sm max-w-xs mx-auto mt-2">
-                Toque nos pontos pulsantes no mapa para ver os sintomas associados.
-              </p>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                    Fechar
+                  </button>
+                </div>
+                <ul className="mt-6 space-y-2">
+                  {selectedPart.symptoms.map((s) => (
+                    <li key={s} className="flex items-center gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3 text-gray-700">
+                      <span className="inline-block h-2.5 w-2.5 rounded-full bg-accent" />
+                      <span className="text-sm font-medium">{s}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-6">
+                  <a href="/saude" className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-primary text-white font-semibold hover:bg-primary-hover transition">
+                    Ver guias de saúde
+                  </a>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     </motion.section>
   );
 }
+
