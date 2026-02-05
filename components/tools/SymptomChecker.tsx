@@ -17,7 +17,11 @@ const BODY_PARTS = [
 
 export default function SymptomChecker() {
   const [selectedPart, setSelectedPart] = useState<typeof BODY_PARTS[0] | null>(null);
+  const [debug, setDebug] = useState(false);
+  const [assetError, setAssetError] = useState({ husky: false, vet: false });
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const [reducedMotion, setReducedMotion] = useState(false);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -26,45 +30,132 @@ export default function SymptomChecker() {
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
+    
+    // Verificar prefers-reduced-motion
+    if (typeof window !== 'undefined') {
+      const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+      setReducedMotion(mediaQuery.matches);
+      
+      const handleChange = (e: MediaQueryListEvent) => {
+        setReducedMotion(e.matches);
+      };
+      
+      mediaQuery.addEventListener('change', handleChange);
+      
+      // Sanity logs apenas em desenvolvimento
+      if (process.env.NODE_ENV === 'development') {
+        console.log('SymptomChecker montado:', {
+          assetError,
+          containerExists: !!containerRef.current,
+          prefersReducedMotion: mediaQuery.matches
+        });
+      }
+      
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+        mediaQuery.removeEventListener('change', handleChange);
+      };
+    }
+    
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   return (
     <section className="w-full max-w-6xl mx-auto py-12 px-4">
+      {/* Debug Toggle */}
+      {process.env.NODE_ENV === "development" && (
+        <button
+          onClick={() => setDebug(!debug)}
+          className="fixed top-20 right-4 z-50 bg-slate-800 text-white px-3 py-1 rounded text-xs font-mono opacity-70 hover:opacity-100 transition-opacity"
+        >
+          {debug ? "DEBUG ON" : "DEBUG OFF"}
+        </button>
+      )}
       <div 
         ref={containerRef}
-        className="relative w-full bg-white rounded-[2.5rem] border-4 border-slate-100 shadow-xl overflow-hidden min-h-[600px]"
+        className="relative w-full bg-white rounded-3xl border-4 border-slate-100 shadow-xl overflow-hidden min-h-[420px] md:min-h-[520px] xl:min-h-[560px]"
       >
         {/* Background & Chão */}
         <div className="absolute inset-0 bg-gradient-to-b from-blue-50/50 to-white z-0" />
-        <div className="absolute bottom-0 w-full h-24 bg-slate-100/50 border-t border-slate-200 z-0" />
+        <div className="absolute bottom-0 w-full h-24 bg-gradient-to-t from-slate-200/60 to-slate-100/40 border-t border-slate-300/50 z-0" />
+        
+        {/* Sombras dos personagens */}
+        <div className="absolute bottom-24 left-1/4 w-48 h-8 bg-slate-400/20 blur-xl rounded-full -translate-x-1/2 z-5" />
+        <div className="absolute bottom-24 right-1/4 w-32 h-6 bg-slate-400/20 blur-xl rounded-full translate-x-1/2 z-5" />
 
         <div className="relative z-10 w-full h-full flex flex-col md:flex-row items-end justify-center md:justify-between px-4 md:px-16 pb-0 md:pb-6 pt-8 md:pt-0 gap-8 md:gap-0">
 
             {/* HUSKY */}
             <div className="relative w-[300px] h-[400px] md:w-[400px] md:h-[500px] shrink-0">
-                <Image
-                    src="/husky-cartoon.png" // CAMINHO CORRIGIDO
+              {/* Backplate de contraste */}
+              <div className="absolute inset-0 z-0 rounded-2xl bg-gradient-to-b from-white/40 to-slate-100/70 ring-1 ring-slate-200/70" />
+              
+              {assetError.husky ? (
+                <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center rounded-lg">
+                  <span className="text-slate-600 font-medium text-sm">Imagem do Husky</span>
+                </div>
+              ) : (
+                <div className="absolute inset-0 z-10 pointer-events-none">
+                  <Image
+                    src="/husky-cartoon.png"
                     alt="Paciente Husky"
                     fill
-                    className="object-contain drop-shadow-xl z-10"
+                    className="object-contain object-bottom drop-shadow-xl"
                     priority
                     sizes="(max-width: 768px) 100vw, 400px"
-                />
+                    onError={() => setAssetError(prev => ({ ...prev, husky: true }))}
+                  />
+                </div>
+              )}
+                {/* Debug Grid */}
+                {debug && (
+                  <div className="absolute inset-0 pointer-events-none z-5">
+                    {/* Grade 10x10 */}
+                    <div className="w-full h-full grid grid-cols-10 grid-rows-10">
+                      {Array.from({ length: 100 }).map((_, i) => (
+                        <div key={i} className="border border-slate-200/30" />
+                      ))}
+                    </div>
+                    {/* Coordenadas */}
+                    <div className="absolute top-2 left-2 bg-black/80 text-white px-2 py-1 rounded text-xs font-mono">
+                      Grid Debug
+                    </div>
+                  </div>
+                )}
+
                 {/* Hotspots */}
                 {BODY_PARTS.map((part) => (
                     <button
                         key={part.id}
-                        onClick={(e) => { e.stopPropagation(); setSelectedPart(part); }}
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          setSelectedPart(part); 
+                          
+                          // Debug: Log das coordenadas atuais
+                          if (debug) {
+                            console.log(`Hotspot ${part.id}: { x: ${part.x}, y: ${part.y} }`);
+                          }
+                        }}
+                        onContextMenu={(e) => {
+                          if (debug) {
+                            e.preventDefault();
+                            const rect = e.currentTarget.parentElement?.getBoundingClientRect();
+                            if (rect) {
+                              const x = ((e.clientX - rect.left) / rect.width) * 100;
+                              const y = ((e.clientY - rect.top) / rect.height) * 100;
+                              console.log(`Nova coordenada para ${part.id}: { x: ${x.toFixed(1)}, y: ${y.toFixed(1)} }`);
+                            }
+                          }
+                        }}
                         style={{ left: `${part.x}%`, top: `${part.y}%` }}
                         className="absolute -translate-x-1/2 -translate-y-1/2 w-12 h-12 cursor-pointer z-20 focus:outline-none group"
                     >
                         <span className="absolute inset-0 rounded-full bg-amber-400 opacity-75 animate-ping group-hover:opacity-100" />
                         <span className={cn(
-                            "relative flex items-center justify-center w-full h-full rounded-full border-4 shadow-lg transition-all duration-300",
+                            "relative flex items-center justify-center w-full h-full rounded-full ring-2 ring-slate-900/20 shadow-md transition-all duration-300",
                             selectedPart?.id === part.id 
-                                ? "bg-amber-500 border-white scale-110 rotate-12" 
-                                : "bg-white/90 border-amber-500 hover:scale-110 hover:bg-amber-50"
+                                ? "bg-amber-500 ring-amber-200 shadow-lg scale-110 rotate-12" 
+                                : "bg-white/90 hover:scale-110 hover:bg-amber-50"
                         )}>
                             {selectedPart?.id === part.id ? <Activity size={20} className="text-white" /> : null}
                         </span>
@@ -74,16 +165,26 @@ export default function SymptomChecker() {
 
             {/* VETERINÁRIO */}
             <div className="relative w-[220px] h-[300px] md:w-[320px] md:h-[450px] shrink-0 flex justify-center">
+              {/* Backplate de contraste */}
+              <div className="absolute inset-0 z-0 rounded-2xl bg-gradient-to-b from-white/35 to-slate-100/60 ring-1 ring-slate-200/70" />
+              
                 {/* Balão */}
-                <div className="absolute bottom-[95%] w-[280px] md:w-[350px] z-30 mb-2 md:-translate-x-12">
+                <div className="absolute bottom-[95%] w-[280px] md:w-[350px] z-40 mb-2 md:-translate-x-12">
                     <AnimatePresence mode="wait">
                         {selectedPart ? (
                             <motion.div
                                 key={selectedPart.id}
-                                initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                                initial={{ opacity: 0, scale: 0.6, y: 8 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.8, y: 10 }}
-                                transition={{ type: "spring", bounce: 0.4 }}
+                                transition={reducedMotion ? {
+                                  type: "tween",
+                                  duration: 0.2
+                                } : {
+                                  type: "spring", 
+                                  stiffness: 260, 
+                                  damping: 18
+                                }}
                                 className="bg-white rounded-3xl p-5 shadow-[8px_8px_0px_0px_rgba(15,23,42,0.15)] border-4 border-slate-800 relative"
                             >
                                 <div className="absolute -bottom-5 right-16 w-0 h-0 border-l-[15px] border-l-transparent border-t-[20px] border-t-slate-800 border-r-[15px] border-r-transparent"></div>
@@ -115,14 +216,23 @@ export default function SymptomChecker() {
                     </AnimatePresence>
                 </div>
 
-                <Image
-                    src="/vet-cartoon.png" // CAMINHO CORRIGIDO
+              {assetError.vet ? (
+                <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center rounded-lg">
+                  <span className="text-slate-600 font-medium text-sm">Imagem do Veterinário</span>
+                </div>
+              ) : (
+                <div className="absolute inset-0 z-20 pointer-events-none">
+                  <Image
+                    src="/vet-cartoon.png"
                     alt="Veterinário Cartoon"
                     fill
-                    className="object-contain drop-shadow-2xl z-20"
+                    className="object-contain object-bottom drop-shadow-2xl"
                     priority
                     sizes="(max-width: 768px) 100vw, 320px"
-                />
+                    onError={() => setAssetError(prev => ({ ...prev, vet: true }))}
+                  />
+                </div>
+              )}
             </div>
         </div>
       </div>
