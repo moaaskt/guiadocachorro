@@ -2,26 +2,25 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import Image from "next/image";
-import { X, ArrowRight, Activity } from "lucide-react";
+import { X, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// === MESTRE: AQUI ESTÃO AS COORDENADAS AJUSTADAS ===
+// Se precisar mover um ponto:
+// x = Esquerda/Direita (0 é esquerda, 100 é direita)
+// y = Cima/Baixo (0 é topo, 100 é baixo)
 const BODY_PARTS = [
-  { id: "ears", label: "Orelhas", x: 35, y: 16, symptoms: ["Coceira frequente", "Cheiro forte", "Vermelhidão", "Sacudir a cabeça"] },
-  { id: "eyes", label: "Olhos", x: 48, y: 26, symptoms: ["Lacrimejamento", "Olhos vermelhos", "Manchas/Névoa", "Secreção"] },
-  { id: "mouth", label: "Boca", x: 46, y: 38, symptoms: ["Mau hálito", "Gengiva sangrando", "Dificuldade ao comer", "Salivação"] },
-  { id: "chest", label: "Peito/Respiração", x: 42, y: 55, symptoms: ["Tosse seca", "Cansaço fácil", "Respiração ruidosa", "Engasgos"] },
-  { id: "paws", label: "Patas", x: 42, y: 88, symptoms: ["Mancar", "Lamber as patas", "Unhas grandes", "Dificuldade ao levantar"] },
-  { id: "tail", label: "Cauda", x: 85, y: 58, symptoms: ["Perseguir a cauda", "Cauda baixa (medo)", "Mordiscar a base"] },
+  { id: "ears", label: "Orelhas", x: 38, y: 15, symptoms: ["Coceira", "Cheiro forte", "Vermelhidão"] },
+  { id: "eyes", label: "Olhos", x: 48, y: 24, symptoms: ["Lacrimejamento", "Olhos vermelhos", "Secreção"] },
+  { id: "mouth", label: "Boca", x: 42, y: 38, symptoms: ["Mau hálito", "Gengiva sangrando", "Salivação"] },
+  { id: "chest", label: "Peito", x: 40, y: 58, symptoms: ["Tosse seca", "Cansaço fácil", "Respiração ruidosa"] },
+  { id: "paws", label: "Patas", x: 32, y: 88, symptoms: ["Mancar", "Lamber patas", "Unhas grandes"] },
+  { id: "tail", label: "Cauda", x: 82, y: 65, symptoms: ["Perseguir cauda", "Cauda baixa", "Mordiscar base"] },
 ];
 
 export default function SymptomChecker() {
   const [selectedPart, setSelectedPart] = useState<typeof BODY_PARTS[0] | null>(null);
-  const [debug, setDebug] = useState(false);
-  const [assetError, setAssetError] = useState({ husky: false, vet: false });
   const containerRef = useRef<HTMLDivElement>(null);
-
-  const [reducedMotion, setReducedMotion] = useState(false);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -30,209 +29,127 @@ export default function SymptomChecker() {
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
-    
-    // Verificar prefers-reduced-motion
-    if (typeof window !== 'undefined') {
-      const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-      setReducedMotion(mediaQuery.matches);
-      
-      const handleChange = (e: MediaQueryListEvent) => {
-        setReducedMotion(e.matches);
-      };
-      
-      mediaQuery.addEventListener('change', handleChange);
-      
-      // Sanity logs apenas em desenvolvimento
-      if (process.env.NODE_ENV === 'development') {
-        console.log('SymptomChecker montado:', {
-          assetError,
-          containerExists: !!containerRef.current,
-          prefersReducedMotion: mediaQuery.matches
-        });
-      }
-      
-      return () => {
-        document.removeEventListener("mousedown", handleClickOutside);
-        mediaQuery.removeEventListener('change', handleChange);
-      };
-    }
-    
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   return (
-    <section className="w-full max-w-6xl mx-auto py-12 px-4">
-      {/* Debug Toggle */}
-      {process.env.NODE_ENV === "development" && (
-        <button
-          onClick={() => setDebug(!debug)}
-          className="fixed top-20 right-4 z-50 bg-slate-800 text-white px-3 py-1 rounded text-xs font-mono opacity-70 hover:opacity-100 transition-opacity"
-        >
-          {debug ? "DEBUG ON" : "DEBUG OFF"}
-        </button>
-      )}
+    <section className="w-full max-w-6xl mx-auto py-8 px-4">
+      {/* Container Principal */}
       <div 
         ref={containerRef}
-        className="relative w-full bg-white rounded-3xl border-4 border-slate-100 shadow-xl overflow-hidden min-h-[420px] md:min-h-[520px] xl:min-h-[560px]"
+        className="relative w-full bg-slate-50 rounded-[2rem] border-4 border-slate-200 shadow-xl overflow-hidden min-h-[600px] flex flex-col md:flex-row"
       >
-        {/* Background & Chão */}
-        <div className="absolute inset-0 bg-gradient-to-b from-blue-50/50 to-white z-0" />
-        <div className="absolute bottom-0 w-full h-24 bg-gradient-to-t from-slate-200/60 to-slate-100/40 border-t border-slate-300/50 z-0" />
-        
-        {/* Sombras dos personagens */}
-        <div className="absolute bottom-24 left-1/4 w-48 h-8 bg-slate-400/20 blur-xl rounded-full -translate-x-1/2 z-5" />
-        <div className="absolute bottom-24 right-1/4 w-32 h-6 bg-slate-400/20 blur-xl rounded-full translate-x-1/2 z-5" />
-
-        <div className="relative z-10 w-full h-full flex flex-col md:flex-row items-end justify-center md:justify-between px-4 md:px-16 pb-0 md:pb-6 pt-8 md:pt-0 gap-8 md:gap-0">
-
-            {/* HUSKY */}
-            <div className="relative w-[300px] h-[400px] md:w-[400px] md:h-[500px] shrink-0">
-              {/* Backplate de contraste */}
-              <div className="absolute inset-0 z-0 rounded-2xl bg-gradient-to-b from-white/40 to-slate-100/70 ring-1 ring-slate-200/70" />
-              
-              {assetError.husky ? (
-                <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center rounded-lg">
-                  <span className="text-slate-600 font-medium text-sm">Imagem do Husky</span>
-                </div>
-              ) : (
-                <div className="absolute inset-0 z-10 pointer-events-none">
-                  <Image
+        {/* === ÁREA DO HUSKY (ESQUERDA) === */}
+        <div className="relative z-10 w-full md:w-1/2 h-[500px] flex items-center justify-center bg-blue-50/30">
+            {/* Wrapper Relativo para posicionar bolinhas */}
+            <div className="relative w-[350px] h-[450px]">
+                {/* IMG NATIVA (Segura e sem erros) */}
+                <img
                     src="/husky-cartoon.png"
                     alt="Paciente Husky"
-                    fill
-                    className="object-contain object-bottom drop-shadow-xl"
-                    priority
-                    sizes="(max-width: 768px) 100vw, 400px"
-                    onError={() => setAssetError(prev => ({ ...prev, husky: true }))}
-                  />
-                </div>
-              )}
-                {/* Debug Grid */}
-                {debug && (
-                  <div className="absolute inset-0 pointer-events-none z-5">
-                    {/* Grade 10x10 */}
-                    <div className="w-full h-full grid grid-cols-10 grid-rows-10">
-                      {Array.from({ length: 100 }).map((_, i) => (
-                        <div key={i} className="border border-slate-200/30" />
-                      ))}
-                    </div>
-                    {/* Coordenadas */}
-                    <div className="absolute top-2 left-2 bg-black/80 text-white px-2 py-1 rounded text-xs font-mono">
-                      Grid Debug
-                    </div>
-                  </div>
-                )}
+                    className="w-full h-full object-contain drop-shadow-xl"
+                    style={{ display: 'block' }}
+                />
+                
+                {/* Texto de Fallback discreto */}
+                <p className="absolute top-1/2 left-1/2 -translate-x-1/2 text-[10px] text-slate-400 -z-10 text-center opacity-50">
+                  Carregando Paciente...
+                </p>
 
-                {/* Hotspots */}
+                {/* HOTSPOTS (BOTOES) */}
                 {BODY_PARTS.map((part) => (
                     <button
                         key={part.id}
-                        onClick={(e) => { 
-                          e.stopPropagation(); 
-                          setSelectedPart(part); 
-                          
-                          // Debug: Log das coordenadas atuais
-                          if (debug) {
-                            console.log(`Hotspot ${part.id}: { x: ${part.x}, y: ${part.y} }`);
-                          }
-                        }}
-                        onContextMenu={(e) => {
-                          if (debug) {
-                            e.preventDefault();
-                            const rect = e.currentTarget.parentElement?.getBoundingClientRect();
-                            if (rect) {
-                              const x = ((e.clientX - rect.left) / rect.width) * 100;
-                              const y = ((e.clientY - rect.top) / rect.height) * 100;
-                              console.log(`Nova coordenada para ${part.id}: { x: ${x.toFixed(1)}, y: ${y.toFixed(1)} }`);
-                            }
-                          }
-                        }}
+                        onClick={(e) => { e.stopPropagation(); setSelectedPart(part); }}
                         style={{ left: `${part.x}%`, top: `${part.y}%` }}
-                        className="absolute -translate-x-1/2 -translate-y-1/2 w-12 h-12 cursor-pointer z-20 focus:outline-none group"
+                        className="absolute -translate-x-1/2 -translate-y-1/2 w-10 h-10 md:w-12 md:h-12 cursor-pointer z-30 group focus:outline-none"
                     >
-                        <span className="absolute inset-0 rounded-full bg-amber-400 opacity-75 animate-ping group-hover:opacity-100" />
+                        {/* Efeito de Onda (Ping) */}
+                        <span className="absolute inset-0 rounded-full bg-amber-400 opacity-60 animate-ping group-hover:opacity-100" />
+                        
+                        {/* O Botão Visível */}
                         <span className={cn(
-                            "relative flex items-center justify-center w-full h-full rounded-full ring-2 ring-slate-900/20 shadow-md transition-all duration-300",
+                            "relative flex items-center justify-center w-full h-full rounded-full border-4 shadow-lg transition-all duration-300",
                             selectedPart?.id === part.id 
-                                ? "bg-amber-500 ring-amber-200 shadow-lg scale-110 rotate-12" 
-                                : "bg-white/90 hover:scale-110 hover:bg-amber-50"
+                                ? "bg-amber-500 border-white scale-125 rotate-12" 
+                                : "bg-white border-amber-500 hover:scale-110"
                         )}>
-                            {selectedPart?.id === part.id ? <Activity size={20} className="text-white" /> : null}
+                            <Activity size={18} className={selectedPart?.id === part.id ? "text-white" : "text-amber-500"} />
                         </span>
                     </button>
                 ))}
             </div>
+        </div>
 
-            {/* VETERINÁRIO */}
-            <div className="relative w-[220px] h-[300px] md:w-[320px] md:h-[450px] shrink-0 flex justify-center">
-              {/* Backplate de contraste */}
-              <div className="absolute inset-0 z-0 rounded-2xl bg-gradient-to-b from-white/35 to-slate-100/60 ring-1 ring-slate-200/70" />
-              
-                {/* Balão */}
-                <div className="absolute bottom-[95%] w-[280px] md:w-[350px] z-40 mb-2 md:-translate-x-12">
+        {/* === ÁREA DO VETERINÁRIO (DIREITA) === */}
+        <div className="relative z-10 w-full md:w-1/2 h-[500px] flex items-end justify-center bg-white pt-10 md:pt-0">
+            
+            {/* Container Relativo do Vet */}
+            <div className="relative w-[300px] h-[400px]">
+                
+                {/* BALÃO - POSICIONAMENTO AJUSTADO */}
+                {/* Agora ele fica flutuando acima da cabeça, mas sem sair da tela */}
+                <div className="absolute bottom-[82%] left-1/2 -translate-x-1/2 w-[280px] z-50 mb-0">
                     <AnimatePresence mode="wait">
                         {selectedPart ? (
                             <motion.div
                                 key={selectedPart.id}
-                                initial={{ opacity: 0, scale: 0.6, y: 8 }}
+                                initial={{ opacity: 0, scale: 0.8, y: 15 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.8, y: 10 }}
-                                transition={reducedMotion ? {
-                                  type: "tween",
-                                  duration: 0.2
-                                } : {
-                                  type: "spring", 
-                                  stiffness: 260, 
-                                  damping: 18
-                                }}
-                                className="bg-white rounded-3xl p-5 shadow-[8px_8px_0px_0px_rgba(15,23,42,0.15)] border-4 border-slate-800 relative"
+                                className="bg-white rounded-3xl p-5 shadow-[0px_10px_25px_-5px_rgba(0,0,0,0.2)] border-2 border-slate-900 relative"
                             >
-                                <div className="absolute -bottom-5 right-16 w-0 h-0 border-l-[15px] border-l-transparent border-t-[20px] border-t-slate-800 border-r-[15px] border-r-transparent"></div>
-                                <div className="absolute -bottom-[16px] right-[67px] w-0 h-0 border-l-[12px] border-l-transparent border-t-[17px] border-t-white border-r-[12px] border-r-transparent z-10"></div>
+                                {/* Triângulo do Balão (Apontando para baixo/Vet) */}
+                                <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-6 h-6 bg-white border-b-2 border-r-2 border-slate-900 transform rotate-45"></div>
 
-                                <div className="flex justify-between items-start mb-3 border-b border-slate-100 pb-2">
-                                    <h3 className="text-lg font-black text-slate-800 uppercase">{selectedPart.label}</h3>
-                                    <button onClick={(e) => { e.stopPropagation(); setSelectedPart(null); }}>
-                                        <X size={20} className="text-slate-400 hover:text-red-500" />
+                                {/* Cabeçalho do Balão */}
+                                <div className="flex justify-between items-center border-b border-slate-100 pb-2 mb-2">
+                                    <h3 className="text-lg font-black text-slate-800 uppercase">
+                                        {selectedPart.label}
+                                    </h3>
+                                    <button 
+                                        onClick={() => setSelectedPart(null)}
+                                        className="p-1 hover:bg-slate-100 rounded-full transition-colors"
+                                    >
+                                        <X size={16} className="text-slate-400" />
                                     </button>
                                 </div>
-                                <ul className="space-y-1.5 mb-4">
+
+                                {/* Lista de Sintomas */}
+                                <ul className="space-y-1.5 mb-3">
                                     {selectedPart.symptoms.map((s, i) => (
-                                        <li key={i} className="flex items-center gap-2 text-sm text-slate-700 font-bold">
-                                            <span className="text-amber-500">●</span> {s}
+                                        <li key={i} className="flex items-start gap-2 text-sm text-slate-700 font-bold">
+                                            <span className="text-amber-500 text-[10px] mt-1">●</span> 
+                                            <span className="leading-tight">{s}</span>
                                         </li>
                                     ))}
                                 </ul>
+                                
+                                <div className="text-center">
+                                    <span className="text-[10px] text-slate-400 font-medium">Toque fora para fechar</span>
+                                </div>
                             </motion.div>
                         ) : (
-                            <motion.div
-                                initial={{ opacity: 0, y: 10 }}
+                            <motion.div 
+                                initial={{ opacity: 0, y: 10 }} 
                                 animate={{ opacity: 1, y: 0 }}
-                                className="absolute bottom-0 right-0 md:right-auto md:left-8 bg-white px-4 py-2 rounded-full border-2 border-slate-800 shadow-md"
+                                className="bg-white/90 backdrop-blur-sm px-5 py-3 rounded-full border-2 border-slate-800 shadow-lg text-center mx-auto w-max"
                             >
-                                <p className="text-xs font-bold text-slate-800">Clique no Husky! 👇</p>
+                                <p className="text-xs font-black text-slate-800 flex items-center gap-2">
+                                    <span>👋</span> Onde dói? Clique no Husky!
+                                </p>
                             </motion.div>
                         )}
                     </AnimatePresence>
                 </div>
 
-              {assetError.vet ? (
-                <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center rounded-lg">
-                  <span className="text-slate-600 font-medium text-sm">Imagem do Veterinário</span>
-                </div>
-              ) : (
-                <div className="absolute inset-0 z-20 pointer-events-none">
-                  <Image
+                {/* IMAGEM DO VET */}
+                <img
                     src="/vet-cartoon.png"
-                    alt="Veterinário Cartoon"
-                    fill
-                    className="object-contain object-bottom drop-shadow-2xl"
-                    priority
-                    sizes="(max-width: 768px) 100vw, 320px"
-                    onError={() => setAssetError(prev => ({ ...prev, vet: true }))}
-                  />
-                </div>
-              )}
+                    alt="Veterinário"
+                    className="w-full h-full object-contain drop-shadow-2xl"
+                    style={{ display: 'block' }}
+                />
             </div>
         </div>
       </div>
