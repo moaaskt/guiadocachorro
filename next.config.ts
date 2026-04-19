@@ -26,6 +26,22 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
+        hostname: "www.akc.org",
+      },
+       {
+        protocol: "https",
+        hostname: "www.pedigree.com.br",
+      },
+      {
+        protocol: "https",
+        hostname: "www.royalcanin.com",
+      },
+      {
+        protocol: "https",
+        hostname: "www.purina.com.br",
+      },
+      {
+        protocol: "https",
         hostname: "ppvkpgrjsrftzdqkbgmi.supabase.co", 
         port: "",
         pathname: "/storage/v1/object/public/**",
