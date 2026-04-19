@@ -24,7 +24,7 @@ const BODY_PARTS: BodyPart[] = [
     id: "ears",
     label: "Orelhas",
     emoji: "👂",
-    x: 44, y: 17,
+    x: 41, y: 11,
     color: "text-violet-600",
     ringColor: "border-violet-400",
     bgColor: "bg-violet-500",
@@ -36,7 +36,7 @@ const BODY_PARTS: BodyPart[] = [
     id: "eyes",
     label: "Olhos",
     emoji: "👁️",
-    x: 44, y: 34,
+    x: 42, y: 32,
     color: "text-sky-600",
     ringColor: "border-sky-400",
     bgColor: "bg-sky-500",
@@ -48,7 +48,7 @@ const BODY_PARTS: BodyPart[] = [
     id: "nose",
     label: "Focinho",
     emoji: "🐽",
-    x: 44, y: 44,
+    x: 50, y: 45,
     color: "text-rose-600",
     ringColor: "border-rose-400",
     bgColor: "bg-rose-500",
@@ -60,7 +60,7 @@ const BODY_PARTS: BodyPart[] = [
     id: "belly",
     label: "Peito & Barriga",
     emoji: "🫀",
-    x: 43, y: 63,
+    x: 47, y: 68,
     color: "text-emerald-600",
     ringColor: "border-emerald-400",
     bgColor: "bg-emerald-500",
@@ -72,7 +72,7 @@ const BODY_PARTS: BodyPart[] = [
     id: "paws",
     label: "Patas",
     emoji: "🐾",
-    x: 42, y: 82,
+    x: 50, y: 97,
     color: "text-amber-600",
     ringColor: "border-amber-400",
     bgColor: "bg-amber-500",
@@ -84,7 +84,7 @@ const BODY_PARTS: BodyPart[] = [
     id: "tail",
     label: "Cauda",
     emoji: "🌀",
-    x: 72, y: 30,
+    x: 71, y: 39,
     color: "text-orange-600",
     ringColor: "border-orange-400",
     bgColor: "bg-orange-500",
@@ -121,7 +121,7 @@ export default function SymptomChecker() {
             </div>
 
             {/* Dog Image + Hotspots */}
-            <div className="relative w-[280px] h-[360px]">
+            <div className="relative w-[320px]" style={{ aspectRatio: "1232/832" }}>
               <img
                 src="/husky-cartoon.png"
                 alt="Husky Paciente"
