@@ -98,16 +98,7 @@ export default function SymptomChecker() {
   const [selected, setSelected] = useState<BodyPart | null>(null);
 
   return (
-    <section className="w-full max-w-5xl mx-auto py-6 px-4">
-      {/* Header */}
-      <div className="text-center mb-6">
-        <div className="inline-flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-full px-4 py-1.5 mb-3">
-          <Stethoscope size={14} className="text-amber-600" />
-          <span className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Verificador de Sintomas</span>
-        </div>
-        <p className="text-slate-500 text-sm">Clique em uma parte do corpo para ver os sintomas associados</p>
-      </div>
-
+    <section className="w-full max-w-5xl mx-auto py-4">
       {/* Main Card */}
       <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
         <div className="flex flex-col md:flex-row">
