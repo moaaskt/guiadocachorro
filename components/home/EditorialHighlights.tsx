@@ -1,16 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, Clock } from "lucide-react";
-
-interface Article {
-  slug: string;
-  title: string;
-  excerpt: string;
-  image: string;
-  image_url: string;
-  category: string;
-  readTime: string;
-}
+import type { Article } from "@/lib/types/article";
 
 interface EditorialHighlightsProps {
   articles: Article[];
@@ -45,7 +36,7 @@ export function EditorialHighlights({ articles }: EditorialHighlightsProps) {
               <article className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 h-full flex flex-col">
                 <div className="relative h-64 overflow-hidden">
                   <Image
-                    src={article.image_url || article.image}
+                    src={article.image_url}
                     alt={article.title}
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-500"
@@ -57,7 +48,7 @@ export function EditorialHighlights({ articles }: EditorialHighlightsProps) {
                 <div className="p-6 flex-1 flex flex-col">
                   <div className="flex items-center gap-2 text-xs text-stone-500 mb-3">
                     <Clock size={14} />
-                    <span>{article.readTime} de leitura</span>
+                    <span>{article.read_time} min de leitura</span>
                   </div>
                   <h3 className="text-xl font-bold text-[#1C3A35] mb-3 group-hover:text-amber-600 transition-colors">
                     {article.title}
