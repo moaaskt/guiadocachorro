@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  guiadocachorro:
+    build: .
+    container_name: guia_cachorro_web
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NEXT_PUBLIC_SITE_URL=https://guiadocachorro.test
+      # Se precisar passar as chaves do Supabase aqui também pode:
+      # - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+    restart: always
